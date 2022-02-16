@@ -31,12 +31,12 @@ namespace SonyBraviaEpi
         private string _currentInput;
         private bool _powerIsOn;
 
-        public SonyBraviaDevice(DeviceConfig config) : base(config.Key, config.Name)
+        public SonyBraviaDevice(DeviceConfig config, IBasicCommunication comms) : base(config.Key, config.Name)
         {
             if (CommandQueue == null)
                 CommandQueue = new GenericQueue("SonyBraviaCommandQueue", 50);
 
-            var coms = CommFactory.CreateCommForDevice(config);
+            var coms = comms;
             var powerQuery = Commands.GetPowerQuery(coms);
             var inputQuery = Commands.GetInputQuery(coms);
 
