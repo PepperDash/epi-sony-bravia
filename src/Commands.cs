@@ -26,8 +26,13 @@ namespace SonyBraviaEpi
 
         public static byte CalculateChecksum(this byte[] data)
         {
-            var result = data.Aggregate(0x00, (current, b) => current + b);
-            return Convert.ToByte(result > 0xff ? data[data.Length - 1] : result);
+            // method defined by Sony API guide
+            //var result = data.Aggregate(0x00, (current, b) => current + b);            
+            //return Convert.ToByte(result > 0xff ? data[data.Length - 1] : result);
+
+            // method used in legacy S+ modules
+            var result = data.Sum(x => (long)x);
+            return unchecked ((byte) result);
         }
 
         public static byte[] WithChecksum(this byte[] data)

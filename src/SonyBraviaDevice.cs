@@ -237,7 +237,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public override void PowerToggle()
         {
-            if (_powerIsOn)
+            if (PowerIsOn)
             {
                 PowerOff();
             }
@@ -566,8 +566,8 @@ namespace SonyBraviaEpi
                         bool powerResult;
                         if (buffer.ParsePowerResponse(out powerResult))
                         {
-                            _powerIsOn = powerResult;
-                            PowerIsOnFeedback.FireUpdate();
+                            PowerIsOn = powerResult;                            
+                            Debug.Console(DebugLevels.Debug,"PowerIsOn: {0}", PowerIsOn.ToString());
                         }
 
                         string input;
