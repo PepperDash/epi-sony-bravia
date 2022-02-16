@@ -89,7 +89,6 @@
   <ItemGroup>
     <Compile Include="DebugLevels.cs" />
     <Compile Include="SonyBraviaConfig.cs" />
-    <Compile Include="RoutingInputPorts.cs" />
     <Compile Include="SonyBraviaDevice.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
@@ -40,11 +39,16 @@ namespace SonyBraviaEpi
         private readonly long _coolingTimeMs;
         private readonly long _warmingtimeMs;        
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="comms"></param>
         public SonyBraviaDevice(DeviceConfig config, IBasicCommunication comms) 
             : base(config.Key, config.Name)
         {
             if (CommandQueue == null)
-                CommandQueue = new GenericQueue("SonyBraviaCommandQueue", 50);
+                CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
 
             _coms = comms;
             var powerQuery = Commands.GetPowerQuery(_coms);
@@ -63,8 +67,7 @@ namespace SonyBraviaEpi
                 this, _coms, monitorConfig.PollInterval, monitorConfig.TimeToWarning, monitorConfig.TimeToError,
                 () => CommandQueue.Enqueue(powerQuery));
 
-            //InputPorts.AddRange(RoutingInputPorts.Build(this, _coms));
-            InitializeInputRoutingPorts();
+            BuildInputRoutingPorts();
 
             var worker = new Thread(ProcessResponseQueue, null);
             _pollTimer = new CTimer(Poll, new[] {inputQuery, powerQuery}, Timeout.Infinite);
@@ -85,8 +88,7 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(
-                        1, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
+                    Debug.Console(DebugLevels.Debug, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
                         ex.Message, ex.StackTrace);
                 }
             };
@@ -100,13 +102,15 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(
-                        1, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
+                    Debug.Console(DebugLevels.Debug, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
                         ex.Message, ex.StackTrace);
                 }
             };
         }
 
+        /// <summary>
+        /// Device power is on
+        /// </summary>
         public bool PowerIsOn
         {
             get { return _powerIsOn; }
@@ -134,6 +138,9 @@ namespace SonyBraviaEpi
             }
         }
         
+        /// <summary>
+        /// Device is cooling
+        /// </summary>
         public bool IsCooling
         {
             get { return _isCooling; }
@@ -144,6 +151,9 @@ namespace SonyBraviaEpi
             }
         }
 
+        /// <summary>
+        /// Device is cooling
+        /// </summary>
         public bool IsWarming
         {
             get { return _isWarming; }
@@ -174,6 +184,13 @@ namespace SonyBraviaEpi
             get { return () => PowerIsOn; }
         }        
 
+        /// <summary>
+        /// Link to API
+        /// </summary>
+        /// <param name="trilist"></param>
+        /// <param name="joinStart"></param>
+        /// <param name="joinMapKey"></param>
+        /// <param name="bridge"></param>
         public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
         {
             LinkDisplayToApi(this, trilist, joinStart, joinMapKey, bridge);
@@ -183,6 +200,10 @@ namespace SonyBraviaEpi
 
         public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
 
+        /// <summary>
+        /// Poll device
+        /// </summary>
+        /// <param name="o"></param>
         public static void Poll(object o)
         {
             var commands = o as IEnumerable<IQueueMessage>;
@@ -192,18 +213,27 @@ namespace SonyBraviaEpi
             commands.ToList().ForEach(CommandQueue.Enqueue);
         }
 
+        /// <summary>
+        /// Turn device power on
+        /// </summary>
         public override void PowerOn()
         {
             CommandQueue.Enqueue(_powerOnCommand);
             _pollTimer.Reset(1000, 5000);
         }
 
+        /// <summary>
+        /// Turn device power off
+        /// </summary>
         public override void PowerOff()
         {
             CommandQueue.Enqueue(_powerOffCommand);
             _pollTimer.Reset(1000, 5000);
         }
 
+        /// <summary>
+        /// Toggle device power
+        /// </summary>
         public override void PowerToggle()
         {
             if (_powerIsOn)
@@ -216,26 +246,32 @@ namespace SonyBraviaEpi
             }
         }        
 
-        private void AddInputRoutingPort(RoutingInputPort input, int port)
-        {            
-            input.Port = port;
-            InputPorts.Add(input);
-        }
-
+        /// <summary>
+        /// Print a list of input routing ports
+        /// </summary>
         public void ListRoutingInputPorts()
         {
             var seperator = new string('*', 50);
 
-            Debug.Console(0, this, seperator);
+            Debug.Console(DebugLevels.Info, this, seperator);
             foreach (var inputPort in InputPorts)
             {
-                Debug.Console(0, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
+                Debug.Console(DebugLevels.Info, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
                     inputPort.Key, inputPort.ConnectionType, inputPort.FeedbackMatchObject, inputPort.Port);
             }
-            Debug.Console(0, this, seperator);
+            Debug.Console(DebugLevels.Info, this, seperator);
         }
 
-        public void InitializeInputRoutingPorts()
+        private void AddInputRoutingPort(RoutingInputPort input, int port)
+        {
+            input.Port = port;
+            InputPorts.Add(input);
+        }        
+
+        /// <summary>
+        /// Build input routing ports
+        /// </summary>
+        public void BuildInputRoutingPorts()
         {
             AddInputRoutingPort(new RoutingInputPort(
                     "hdmi1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
@@ -285,67 +321,107 @@ namespace SonyBraviaEpi
                     "component3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component, 
                     new Action(InputComponent3), this), 12);
         }
-       
+        
+        /// <summary>
+        /// Select HDMI 1 input
+        /// </summary>
         public void InputHdmi1()
         {
             CommandQueue.Enqueue(Commands.GetHdmi1(_coms));
         }
 
+        /// <summary>
+        /// Select HDMI 2 input
+        /// </summary>
         public void InputHdmi2()
         {
             CommandQueue.Enqueue(Commands.GetHdmi2(_coms));
         }
 
+        /// <summary>
+        /// Select HDMI 3 input
+        /// </summary>
         public void InputHdmi3()
         {
             CommandQueue.Enqueue(Commands.GetHdmi3(_coms));
         }
 
+        /// <summary>
+        /// Select HDMI 4 input
+        /// </summary>
         public void InputHdmi4()
         {
             CommandQueue.Enqueue(Commands.GetHdmi4(_coms));
         }
 
+        /// <summary>
+        /// Select HDMI 5 input
+        /// </summary>
         public void InputHdmi5()
         {
             CommandQueue.Enqueue(Commands.GetHdmi5(_coms));
         }
 
+        /// <summary>
+        /// Select Video 1 input
+        /// </summary>
         public void InputVideo1()
         {
             CommandQueue.Enqueue(Commands.GetVideo1(_coms));
         }
 
+        /// <summary>
+        /// Select Video 2 input
+        /// </summary>
         public void InputVideo2()
         {
             CommandQueue.Enqueue(Commands.GetVideo2(_coms));
         }
 
+        /// <summary>
+        /// Select Video 3 input
+        /// </summary>
         public void InputVideo3()
         {
             CommandQueue.Enqueue(Commands.GetVideo3(_coms));
         }
 
+        /// <summary>
+        /// Select Component 1 input
+        /// </summary>
         public void InputComponent1()
         {
             CommandQueue.Enqueue(Commands.GetComponent1(_coms));
         }
 
+        /// <summary>
+        /// Select Component 2 input
+        /// </summary>
         public void InputComponent2()
         {
             CommandQueue.Enqueue(Commands.GetComponent2(_coms));
         }
 
+        /// <summary>
+        /// Select Component 3 input
+        /// </summary>
         public void InputComponent3()
         {
             CommandQueue.Enqueue(Commands.GetComponent3(_coms));
         }
 
+        /// <summary>
+        /// Select PC input using the IInputVga1 interface
+        /// </summary>
         public void InputVga1()
         {
             CommandQueue.Enqueue(Commands.GetPc(_coms));
         }
 
+        /// <summary>
+        /// Execute switch
+        /// </summary>
+        /// <param name="selector"></param>
         public override void ExecuteSwitch(object selector)
         {
             if (PowerIsOn)
@@ -378,6 +454,8 @@ namespace SonyBraviaEpi
 
         private object ProcessResponseQueue(object _)
         {
+            var seperator = new string('-', 50);
+
             byte[] buffer = null;
             while (true)
             {
@@ -387,7 +465,7 @@ namespace SonyBraviaEpi
                     if (bytes == null)
                         return null;
 
-                    Debug.Console(DebugLevels.Debug, this, "Processing Response: {0}", bytes.ToReadableString());
+                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
 
                     if (buffer == null)
                         buffer = bytes;
@@ -399,7 +477,7 @@ namespace SonyBraviaEpi
                         buffer = newBuffer;
                     }
 
-                    Debug.Console(DebugLevels.Debug, this, "Processing Buffer: {0}", buffer.ToReadableString());
+                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer: {0}", buffer.ToReadableString());
 
                     if (!buffer.ContainsHeader())
                         continue;
@@ -407,10 +485,16 @@ namespace SonyBraviaEpi
                     if (buffer.ElementAtOrDefault(0) != 0x70)
                         buffer = buffer.CleanToFirstHeader();
 
+                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer.CleanToFirstHeader: {0}", buffer.ToReadableString());
+
                     while (buffer.Length >= 4)
                     {
-                        var message = buffer.GetFirstMessage();
-                        //Debug.Console(DebugLevels.Debug, this, "Message.GetFirstMessage: {0}", message.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, seperator);
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(a): {0}", buffer.ToReadableString());
+                        var message = buffer.GetFirstMessage();                        
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message: {0}", message.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(b): {0}", buffer.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, seperator);
 
                         if (message.Length < 4)
                         {
@@ -442,7 +526,7 @@ namespace SonyBraviaEpi
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.Debug, this, "Processing Message: {0}", message.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message: {0}", message.ToReadableString());                        
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
