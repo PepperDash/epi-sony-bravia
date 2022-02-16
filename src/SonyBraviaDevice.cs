@@ -51,8 +51,8 @@ namespace SonyBraviaEpi
                 CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
 
             _coms = comms;
-            var powerQuery = Commands.GetPowerQuery(_coms);
-            var inputQuery = Commands.GetInputQuery(_coms);
+            //var powerQuery = Commands.GetPowerQuery(_coms);
+            //var inputQuery = Commands.GetInputQuery(_coms);
 
             _powerOnCommand = Commands.GetPowerOn(_coms);
             _powerOffCommand = Commands.GetPowerOff(_coms);
@@ -65,12 +65,13 @@ namespace SonyBraviaEpi
 
             CommunicationMonitor = new GenericCommunicationMonitor(
                 this, _coms, monitorConfig.PollInterval, monitorConfig.TimeToWarning, monitorConfig.TimeToError,
-                () => CommandQueue.Enqueue(powerQuery));
+                PowerPoll);
 
             BuildInputRoutingPorts();
 
             var worker = new Thread(ProcessResponseQueue, null);
-            _pollTimer = new CTimer(Poll, new[] {inputQuery, powerQuery}, Timeout.Infinite);
+            //_pollTimer = new CTimer(Poll, new[] {PowerPoll(), InputPoll()}, Timeout.Infinite);
+            _pollTimer = new CTimer(Poll, new[] { PowerPoll() }, Timeout.Infinite);
 
             _coms.BytesReceived += (sender, args) => _queue.Enqueue(args.Bytes);
 
@@ -98,7 +99,7 @@ namespace SonyBraviaEpi
                 try
                 {
                     CommunicationMonitor.Start();
-                    _pollTimer.Reset(5000, 5000);
+                    _pollTimer.Reset(5000, 15000);
                 }
                 catch (Exception ex)
                 {
@@ -219,7 +220,7 @@ namespace SonyBraviaEpi
         public override void PowerOn()
         {
             CommandQueue.Enqueue(_powerOnCommand);
-            _pollTimer.Reset(1000, 5000);
+            _pollTimer.Reset(1000, 15000);
         }
 
         /// <summary>
@@ -228,7 +229,7 @@ namespace SonyBraviaEpi
         public override void PowerOff()
         {
             CommandQueue.Enqueue(_powerOffCommand);
-            _pollTimer.Reset(1000, 5000);
+            _pollTimer.Reset(1000, 15000);
         }
 
         /// <summary>
@@ -244,7 +245,15 @@ namespace SonyBraviaEpi
             {
                 PowerOn();
             }
-        }        
+        }
+
+        /// <summary>
+        /// Poll device for power state
+        /// </summary>
+        public void PowerPoll()
+        {
+            CommandQueue.Enqueue(Commands.GetPowerQuery(_coms));
+        }
 
         /// <summary>
         /// Print a list of input routing ports
@@ -416,6 +425,14 @@ namespace SonyBraviaEpi
         public void InputVga1()
         {
             CommandQueue.Enqueue(Commands.GetPc(_coms));
+        }
+
+        /// <summary>
+        /// Poll device for input state
+        /// </summary>
+        public void InputPoll()
+        {
+            CommandQueue.Enqueue(Commands.GetInputQuery(_coms));
         }
 
         /// <summary>
