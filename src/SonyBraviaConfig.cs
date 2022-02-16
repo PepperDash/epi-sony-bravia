@@ -7,5 +7,8 @@ namespace SonyBraviaEpi
     {
         public CommunicationMonitorConfig CommunicationMonitorProperties { get; set; }
         public ControlPropertiesConfig Control { get; set; }
+
+        public long WarmingTimeMs { get; set; }
+        public long CoolingTimeMs { get; set; }
     }
 }
