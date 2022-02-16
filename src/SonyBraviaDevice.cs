@@ -14,6 +14,7 @@ namespace SonyBraviaEpi
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced, IOnline
     {
+        private readonly IBasicCommunication _coms;
         public static GenericQueue CommandQueue;
 
         public static readonly CommunicationMonitorConfig DefaultMonitorConfig = new CommunicationMonitorConfig
@@ -36,26 +37,26 @@ namespace SonyBraviaEpi
             if (CommandQueue == null)
                 CommandQueue = new GenericQueue("SonyBraviaCommandQueue", 50);
 
-            var coms = comms;
-            var powerQuery = Commands.GetPowerQuery(coms);
-            var inputQuery = Commands.GetInputQuery(coms);
+            _coms = comms;
+            var powerQuery = Commands.GetPowerQuery(_coms);
+            var inputQuery = Commands.GetInputQuery(_coms);
 
-            _powerOnCommand = Commands.GetPowerOn(coms);
-            _powerOffCommand = Commands.GetPowerOff(coms);
+            _powerOnCommand = Commands.GetPowerOn(_coms);
+            _powerOffCommand = Commands.GetPowerOff(_coms);
 
             var props = config.Properties.ToObject<SonyBraviaConfig>();
             var monitorConfig = props.CommunicationMonitorProperties ?? DefaultMonitorConfig;
 
             CommunicationMonitor = new GenericCommunicationMonitor(
-                this, coms, monitorConfig.PollInterval, monitorConfig.TimeToWarning, monitorConfig.TimeToError,
+                this, _coms, monitorConfig.PollInterval, monitorConfig.TimeToWarning, monitorConfig.TimeToError,
                 () => CommandQueue.Enqueue(powerQuery));
 
-            InputPorts.AddRange(RoutingInputPorts.Build(this, coms));
+            InputPorts.AddRange(RoutingInputPorts.Build(this, _coms));
 
             var worker = new Thread(ProcessResponseQueue, null);
             _pollTimer = new CTimer(Poll, new[] {inputQuery, powerQuery}, Timeout.Infinite);
 
-            coms.BytesReceived += (sender, args) => _queue.Enqueue(args.Bytes);
+            _coms.BytesReceived += (sender, args) => _queue.Enqueue(args.Bytes);
 
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
@@ -141,6 +142,66 @@ namespace SonyBraviaEpi
             {
                 PowerOn();
             }
+        }
+
+        public void InputHdmi1()
+        {
+            CommandQueue.Enqueue(Commands.GetHdmi1(_coms));
+        }
+
+        public void InputHdmi2()
+        {
+            CommandQueue.Enqueue(Commands.GetHdmi2(_coms));
+        }
+
+        public void InputHdmi3()
+        {
+            CommandQueue.Enqueue(Commands.GetHdmi3(_coms));
+        }
+
+        public void InputHdmi4()
+        {
+            CommandQueue.Enqueue(Commands.GetHdmi4(_coms));
+        }
+
+        public void InputHdmi5()
+        {
+            CommandQueue.Enqueue(Commands.GetHdmi5(_coms));
+        }
+
+        public void InputVideo1()
+        {
+            CommandQueue.Enqueue(Commands.GetVideo1(_coms));
+        }
+
+        public void InputVideo2()
+        {
+            CommandQueue.Enqueue(Commands.GetVideo2(_coms));
+        }
+
+        public void InputVideo3()
+        {
+            CommandQueue.Enqueue(Commands.GetVideo3(_coms));
+        }
+
+        public void InputComponent1()
+        {
+            CommandQueue.Enqueue(Commands.GetComponent1(_coms));
+        }
+
+        public void InputComponent2()
+        {
+            CommandQueue.Enqueue(Commands.GetComponent2(_coms));
+        }
+
+        public void InputComponent3()
+        {
+            CommandQueue.Enqueue(Commands.GetComponent3(_coms));
+        }
+
+        public void InputPc()
+        {
+            CommandQueue.Enqueue(Commands.GetPc(_coms));
         }
 
         public override void ExecuteSwitch(object selector)
