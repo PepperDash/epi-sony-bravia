@@ -51,7 +51,7 @@ namespace SonyBraviaEpi
                 CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
 
             _coms = comms;
-            //var powerQuery = Commands.GetPowerQuery(_coms);
+            var powerQuery = Commands.GetPowerQuery(_coms);
             //var inputQuery = Commands.GetInputQuery(_coms);
 
             _powerOnCommand = Commands.GetPowerOn(_coms);
@@ -71,7 +71,7 @@ namespace SonyBraviaEpi
 
             var worker = new Thread(ProcessResponseQueue, null);
             //_pollTimer = new CTimer(Poll, new[] {PowerPoll(), InputPoll()}, Timeout.Infinite);
-            _pollTimer = new CTimer(Poll, new[] { PowerPoll() }, Timeout.Infinite);
+            _pollTimer = new CTimer(Poll, new[] { powerQuery }, Timeout.Infinite);
 
             _coms.BytesReceived += (sender, args) => _queue.Enqueue(args.Bytes);
 
@@ -252,7 +252,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void PowerPoll()
         {
-            CommandQueue.Enqueue(Commands.GetPowerQuery(_coms));
+            //CommandQueue.Enqueue(Commands.GetPowerQuery(_coms));
+            byte[] poll = {0x83, 0x00, 0x00, 0xFF, 0xFF, 0x81};
+            CommandQueue.Enqueue(new ComsMessage(_coms, poll));
         }
 
         /// <summary>
@@ -432,7 +434,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputPoll()
         {
-            CommandQueue.Enqueue(Commands.GetInputQuery(_coms));
+            //CommandQueue.Enqueue(Commands.GetInputQuery(_coms));
+            byte[] poll = { 0x83, 0x00, 0x02, 0xFF, 0xFF, 0x83 };
+            CommandQueue.Enqueue(new ComsMessage(_coms, poll));
         }
 
         /// <summary>
