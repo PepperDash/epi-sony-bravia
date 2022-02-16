@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
@@ -249,14 +250,33 @@ namespace SonyBraviaEpi
                     while (buffer.Length >= 4)
                     {
                         var message = buffer.GetFirstMessage();
+                        //Debug.Console(PARSING_DEBUG, this, "Message.GetFirstMessage: {0}", message.ToReadableString());
+
                         if (message.Length < 4)
                         {
                             // we have an ACK in here, let's print it out and keep moving                            
-                            var err = new byte[] {0x70, 0x04, 0x74};
-                            Debug.Console(PARSING_DEBUG, this,
-                                message == err
-                                    ? "Found Abnormal End Response, Parse Error (Data Format Error): {0}"
-                                    : "Found an ACK/NACK: {0}", message.ToReadableString());                            
+                            switch (message.ToReadableString())
+                            {
+                                // response to query request (abnormal end) - Command Cancelled
+                                // package is recieved normally, but the request is not acceptable in the current display status
+                                case "70-03-74":
+                                {
+                                    Debug.Console(PARSING_DEBUG, this,"Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());                            
+                                    break;
+                                }
+                                // response to query request (abnormal end) - ParseError (Data Format Error)
+                                case "70-04-74":
+                                {
+                                    Debug.Console(PARSING_DEBUG, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
+                                    break;
+                                }
+                                default:
+                                {
+                                    Debug.Console(PARSING_DEBUG, this, "Found Unknown Response Type: {0}", message.ToReadableString());
+                                    break;
+                                }
+                            }
+                            
                             buffer = buffer.CleanOutFirstMessage();
                             continue;
                         }
@@ -296,9 +316,10 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(
-                        1, this, Debug.ErrorLogLevel.Notice, "Caught an exception processing the string : {0}{1}",
-                        ex.Message, ex.StackTrace);
+                    Debug.Console(0, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception: {0}",ex.Message);
+                    Debug.Console(2, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception Stack Trace: {0}", ex.StackTrace);
+                    if(ex.InnerException != null)
+                        Debug.Console(2, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Inner Exception: {0}", ex.InnerException);
                 }
             }
         }
