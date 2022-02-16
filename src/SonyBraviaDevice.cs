@@ -251,8 +251,12 @@ namespace SonyBraviaEpi
                         var message = buffer.GetFirstMessage();
                         if (message.Length < 4)
                         {
-                            // we have an ACK in here, let's print it out and keep moving
-                            Debug.Console(PARSING_DEBUG, this, "Found an ACK/NACK: {0}", message.ToReadableString());
+                            // we have an ACK in here, let's print it out and keep moving                            
+                            var err = new byte[] {0x70, 0x04, 0x74};
+                            Debug.Console(PARSING_DEBUG, this,
+                                message == err
+                                    ? "Found Abnormal End Response, Parse Error (Data Format Error): {0}"
+                                    : "Found an ACK/NACK: {0}", message.ToReadableString());                            
                             buffer = buffer.CleanOutFirstMessage();
                             continue;
                         }
