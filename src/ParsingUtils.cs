@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using PepperDash.Core;
 
 namespace SonyBraviaEpi
 {
@@ -8,6 +9,7 @@ namespace SonyBraviaEpi
         public static bool ParsePowerResponse(this byte[] response, out bool power)
         {
             // TO DO[ ] actually add in parsing
+            Debug.Console(DebugLevels.Debug, "ParsePowerResponse response: {0}", response.ToReadableString());
             power = false;
             return false;
         }
@@ -15,6 +17,7 @@ namespace SonyBraviaEpi
         public static bool ParseInputResponse(this byte[] response, out string input)
         {
             // TO DO[ ] actually add in parsing
+            Debug.Console(DebugLevels.Debug, "ParseInputResponse response: {0}", response.ToReadableString());
             input = "";
             return false;
         }

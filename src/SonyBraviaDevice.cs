@@ -465,7 +465,7 @@ namespace SonyBraviaEpi
                     if (bytes == null)
                         return null;
 
-                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
+                    //Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
 
                     if (buffer == null)
                         buffer = bytes;
@@ -477,7 +477,7 @@ namespace SonyBraviaEpi
                         buffer = newBuffer;
                     }
 
-                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer: {0}", buffer.ToReadableString());
+                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(1): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
 
                     if (!buffer.ContainsHeader())
                         continue;
@@ -485,15 +485,15 @@ namespace SonyBraviaEpi
                     if (buffer.ElementAtOrDefault(0) != 0x70)
                         buffer = buffer.CleanToFirstHeader();
 
-                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer.CleanToFirstHeader: {0}", buffer.ToReadableString());
+                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(2): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
 
                     while (buffer.Length >= 4)
                     {
                         Debug.Console(DebugLevels.Debug, this, seperator);
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(a): {0}", buffer.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(3): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
                         var message = buffer.GetFirstMessage();                        
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message: {0}", message.ToReadableString());
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(b): {0}", buffer.ToReadableString());
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message(1): {0} | message.Length: {1}", message.ToReadableString(), message.Length);
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(4): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
                         Debug.Console(DebugLevels.Debug, this, seperator);
 
                         if (message.Length < 4)
@@ -522,20 +522,21 @@ namespace SonyBraviaEpi
                             }
                             
                             buffer = buffer.CleanOutFirstMessage();
+                            Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(5): {0}", buffer.ToReadableString());
                             continue;
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message: {0}", message.ToReadableString());                        
+                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());                        
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
-                        var isComplate = totalDataSize == message.Length;
+                        var isComplete = totalDataSize == message.Length;
                         Debug.Console(
                             DebugLevels.Debug, this, "Data Size: {0} | Total Data Size: {1} | Message Size: {2}", dataSize,
                             totalDataSize, message.Length);
 
-                        if (!isComplate)
+                        if (!isComplete)
                         {
                             Debug.Console(DebugLevels.Debug, this, "Message is incomplete... spinning around");
                             break;
