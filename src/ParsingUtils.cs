@@ -9,7 +9,7 @@ namespace SonyBraviaEpi
         public static bool ParsePowerResponse(this byte[] response, out bool power)
         {
             // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.Debug, "ParsePowerResponse response: {0}", response.ToReadableString());
+            Debug.Console(DebugLevels.NoticeLevel, "ParsePowerResponse response: {0}", response.ToReadableString());
 
             if (response[2] == 0x00)
             {
@@ -24,7 +24,7 @@ namespace SonyBraviaEpi
         public static bool ParseInputResponse(this byte[] response, out string input)
         {
             // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.Debug, "ParseInputResponse response: {0}", response.ToReadableString());
+            Debug.Console(DebugLevels.NoticeLevel, "ParseInputResponse response: {0}", response.ToReadableString());
 
             //if (response[2] == 0x02)
             //{

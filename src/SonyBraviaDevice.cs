@@ -89,7 +89,7 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.Debug, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
+                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
                         ex.Message, ex.StackTrace);
                 }
             };
@@ -103,7 +103,7 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.Debug, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
+                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
                         ex.Message, ex.StackTrace);
                 }
             };
@@ -264,13 +264,13 @@ namespace SonyBraviaEpi
         {
             var seperator = new string('*', 50);
 
-            Debug.Console(DebugLevels.Info, this, seperator);
+            Debug.Console(DebugLevels.ErrorLevel, this, seperator);
             foreach (var inputPort in InputPorts)
             {
-                Debug.Console(DebugLevels.Info, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
+                Debug.Console(DebugLevels.ErrorLevel, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
                     inputPort.Key, inputPort.ConnectionType, inputPort.FeedbackMatchObject, inputPort.Port);
             }
-            Debug.Console(DebugLevels.Info, this, seperator);
+            Debug.Console(DebugLevels.ErrorLevel, this, seperator);
         }
 
         private void AddInputRoutingPort(RoutingInputPort input, int port)
@@ -486,7 +486,7 @@ namespace SonyBraviaEpi
                     if (bytes == null)
                         return null;
 
-                    //Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
+                    //Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
 
                     if (buffer == null)
                         buffer = bytes;
@@ -498,7 +498,7 @@ namespace SonyBraviaEpi
                         buffer = newBuffer;
                     }
 
-                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(1): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                    Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue buffer(1): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
 
                     if (!buffer.ContainsHeader())
                         continue;
@@ -506,16 +506,16 @@ namespace SonyBraviaEpi
                     if (buffer.ElementAtOrDefault(0) != 0x70)
                         buffer = buffer.CleanToFirstHeader();
 
-                    Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(2): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                    Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue buffer(2): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
 
                     while (buffer.Length >= 4)
                     {
-                        Debug.Console(DebugLevels.Debug, this, seperator);
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(3): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                        Debug.Console(DebugLevels.NoticeLevel, this, seperator);
+                        Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue buffer(3): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
                         var message = buffer.GetFirstMessage();                        
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message(1): {0} | message.Length: {1}", message.ToReadableString(), message.Length);
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(4): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
-                        Debug.Console(DebugLevels.Debug, this, seperator);
+                        Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue message(1): {0} | message.Length: {1}", message.ToReadableString(), message.Length);
+                        Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue buffer(4): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                        Debug.Console(DebugLevels.NoticeLevel, this, seperator);
 
                         if (message.Length < 4)
                         {
@@ -526,40 +526,40 @@ namespace SonyBraviaEpi
                                 // package is recieved normally, but the request is not acceptable in the current display status
                                 case "70-03-74":
                                 {
-                                    Debug.Console(DebugLevels.Debug, this,"Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());                            
+                                    Debug.Console(DebugLevels.NoticeLevel, this,"Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());                            
                                     break;
                                 }
                                 // response to query request (abnormal end) - ParseError (Data Format Error)
                                 case "70-04-74":
                                 {
-                                    Debug.Console(DebugLevels.Debug, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
+                                    Debug.Console(DebugLevels.NoticeLevel, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
                                     break;
                                 }
                                 default:
                                 {
-                                    Debug.Console(DebugLevels.Debug, this, "Found Unknown Response Type: {0}", message.ToReadableString());
+                                    Debug.Console(DebugLevels.NoticeLevel, this, "Found Unknown Response Type: {0}", message.ToReadableString());
                                     break;
                                 }
                             }
                             
                             buffer = buffer.CleanOutFirstMessage();
-                            Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue buffer(5): {0}", buffer.ToReadableString());
+                            Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue buffer(5): {0}", buffer.ToReadableString());
                             continue;
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.Debug, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());                        
+                        Debug.Console(DebugLevels.NoticeLevel, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());                        
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
                         var isComplete = totalDataSize == message.Length;
                         Debug.Console(
-                            DebugLevels.Debug, this, "Data Size: {0} | Total Data Size: {1} | Message Size: {2}", dataSize,
+                            DebugLevels.NoticeLevel, this, "Data Size: {0} | Total Data Size: {1} | Message Size: {2}", dataSize,
                             totalDataSize, message.Length);
 
                         if (!isComplete)
                         {
-                            Debug.Console(DebugLevels.Debug, this, "Message is incomplete... spinning around");
+                            Debug.Console(DebugLevels.NoticeLevel, this, "Message is incomplete... spinning around");
                             break;
                         }
 
@@ -567,7 +567,7 @@ namespace SonyBraviaEpi
                         if (buffer.ParsePowerResponse(out powerResult))
                         {
                             PowerIsOn = powerResult;                            
-                            Debug.Console(DebugLevels.Debug,"PowerIsOn: {0}", PowerIsOn.ToString());
+                            Debug.Console(DebugLevels.NoticeLevel,"PowerIsOn: {0}", PowerIsOn.ToString());
                         }
 
                         string input;
@@ -582,10 +582,10 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.Info, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception: {0}",ex.Message);
-                    Debug.Console(DebugLevels.Debug, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception Stack Trace: {0}", ex.StackTrace);
+                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception: {0}",ex.Message);
+                    Debug.Console(DebugLevels.WarningLevel, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Exception Stack Trace: {0}", ex.StackTrace);
                     if(ex.InnerException != null)
-                        Debug.Console(DebugLevels.Verbose, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Inner Exception: {0}", ex.InnerException);
+                        Debug.Console(DebugLevels.NoticeLevel, this, Debug.ErrorLogLevel.Notice, "ProcessResponseQueue Inner Exception: {0}", ex.InnerException);
                 }
             }
         }
