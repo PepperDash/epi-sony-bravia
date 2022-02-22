@@ -16,19 +16,19 @@ namespace SonyBraviaEpi
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)
         {
-            Debug.Console(DebugLevels.ErrorLevel, "[{0}] Building {1} plugin instance...", dc.Name, dc.Type);
+            Debug.Console(DebugLevels.TraceLevel, "[{0}] Building {1} plugin instance...", dc.Name, dc.Type);
 
             var props = dc.Properties.ToObject<SonyBraviaConfig>();
             if (props == null)
             {
-                Debug.Console(DebugLevels.ErrorLevel, "[{0}] Failed to build {1} plugin", dc.Name, dc.Type);
+                Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin", dc.Name, dc.Type);
                 return null;
             }
 
             var comms = CommFactory.CreateCommForDevice(dc);
             if (comms != null) return new SonyBraviaDevice(dc, comms);
 
-            Debug.Console(DebugLevels.ErrorLevel, "[{0}] Failed to build {1} plugin using {2}", dc.Name, dc.Type, props.Control.Method);
+            Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin using {2}", dc.Name, dc.Type, props.Control.Method);
             return null;
         }
     }

@@ -7,6 +7,52 @@ using PepperDash.Essentials.Core;
 namespace SonyBraviaEpi
 {
     /// <summary>
+    /// Has debug levels interface
+    /// </summary>
+    public interface IHasDebugLevels
+    {
+        // LogLevel enum
+        // - https://docs.microsoft.com/en-us/javascript/api/@aspnet/signalr/loglevel?view=signalr-js-latest
+
+        /// <summary>
+        /// Trace level (0)
+        /// </summary>
+        /// <remarks>
+        /// Log level for very low severity diagnostic messages.
+        /// </remarks>
+        uint TraceLevel { get; set; }
+
+        /// <summary>
+        /// Debug level (1)
+        /// </summary>
+        /// <remarks>
+        /// Log level for low severity diagnostic messages.
+        /// </remarks>
+        uint DebugLevel { get; set; }
+
+        /// <summary>
+        /// Error Level (2)
+        /// </summary>
+        /// <remarks>
+        /// Log level for diagnostic messages that indicate a failure in the current operation.
+        /// </remarks>
+        uint ErrorLevel { get; set; }
+
+        /// <summary>
+        /// Sets the device debug levels to the value 
+        /// </summary>
+        /// <param name="value">uint value</param>
+        void SetDebugLevels(uint value);
+
+        /// <summary>
+        /// Resets the device debug levels to the standard values
+        /// </summary>
+        void ResetDebugLevels();
+
+        
+    }
+
+    /// <summary>
     /// Debug level 
     /// </summary>
     static public class DebugLevels
@@ -20,30 +66,39 @@ namespace SonyBraviaEpi
         private const long DebugTimerDefaultMs = 90000; // 15-minutes (90,000-ms)
 
         /// <summary>
-        /// Error level (0) - informational level
+        /// Trace level (0)
         /// </summary>
+        /// <remarks>
+        /// Log level for very low severity diagnostic messages.
+        /// </remarks>
+        public static uint TraceLevel { get; private set; }
+
+        /// <summary>
+        /// Debug level (1)
+        /// </summary>
+        /// <remarks>
+        /// Log level for low severity diagnostic messages.
+        /// </remarks>
+        public static uint DebugLevel { get; private set; }
+
+        /// <summary>
+        /// Error Level (2)
+        /// </summary>
+        /// <remarks>
+        /// Log level for diagnostic messages that indicate a failure in the current operation.
+        /// </remarks>
         public static uint ErrorLevel { get; private set; }
-
-        /// <summary>
-        /// Debug level (1) - debug level
-        /// </summary>
-        public static uint WarningLevel { get; private set; }
-
-        /// <summary>
-        /// Notice level (2) - verbose/silly level
-        /// </summary>
-        public static uint NoticeLevel { get; private set; }
 
 
         private static CTimer _debugTimer;
         private static bool _timerActive;
 
-        private static void DefaultDebugLevels()
+        private static void ResetDebugLevels()
         {            
             CrestronConsole.ConsoleCommandResponse(@"SETPLUGINDEBUGLEVEL level defaults set");
-            ErrorLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Error);
-            WarningLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Warning);
-            NoticeLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Notice);
+            TraceLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Error);
+            DebugLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Warning);
+            ErrorLevel = Convert.ToUInt16(Debug.ErrorLogLevel.Notice);
         }
 
         private static void SetDebugLevels(uint value)
@@ -56,9 +111,9 @@ namespace SonyBraviaEpi
 
             CrestronConsole.ConsoleCommandResponse(@"SETPLUGINDEBUGLEVEL level '{0}' set", value);
 
+            TraceLevel = value;
+            DebugLevel = value;
             ErrorLevel = value;
-            WarningLevel = value;
-            NoticeLevel = value;
         }
 
         /// <summary>
@@ -67,7 +122,7 @@ namespace SonyBraviaEpi
         static DebugLevels()
         {
             // set the default values
-            DefaultDebugLevels();
+            ResetDebugLevels();
 
             CrestronConsole.AddNewConsoleCommand(
                 ProcessConsoleCommand,
@@ -85,18 +140,8 @@ namespace SonyBraviaEpi
         /// <param name="command">command parameters in string format, not including the command</param>
         public static void ProcessConsoleCommand(string command)
         {
-            //Debug.Console(ErrorLevel, "ProcessConsoleCommand command: '{0}'", command);
-
             var data = command.Split(' ');
-            // used for development
-            //Debug.Console(ErrorLevel, "data.Count: {0} | data.Length: {1}", data.Count(), data.Length);
-            //var i = 0;
-            //foreach (var item in data)
-            //{
-            //    Debug.Console(ErrorLevel, "data[{1}]: '{0}'", item, i);
-            //    i++;
-            //}
-
+            
             if (data == null || data.Length == 0 || string.IsNullOrEmpty(data[0]) || data[0].Contains("?"))
             {
                 CrestronConsole.ConsoleCommandResponse(ConsoleHelpMessageExtended);
@@ -110,8 +155,8 @@ namespace SonyBraviaEpi
             if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(param))
                 return;
 
-            var device = DeviceManager.GetDeviceForKey(key);
-            if (device == null)
+            var device = DeviceManager.GetDeviceForKey(key);            
+            if (device == null || !device.Key.Equals(key))
             {
                 CrestronConsole.ConsoleCommandResponse("SETPLUGINDEBUGLEVEL unable to get device with key: '{0}'", key);
                 return;
@@ -129,14 +174,14 @@ namespace SonyBraviaEpi
 
                     _timerActive = false;
 
-                    DefaultDebugLevels();
+                    ResetDebugLevels();
 
                     break;
                 }
                 case "on":
                 {
                     if (_debugTimer == null)
-                        _debugTimer = new CTimer(t => DefaultDebugLevels(), timerLen);
+                        _debugTimer = new CTimer(t => ResetDebugLevels(), timerLen);
                     else
                         _debugTimer.Reset();
 
