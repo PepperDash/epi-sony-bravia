@@ -44,6 +44,68 @@
                 }
             },
             {
+                "key": "display-2",
+                "name": "Display",
+                "type": "sonybravia",
+                "group": "display",
+                "properties": {
+                    "control": {
+                        "method": "tcpip",
+                        "controlPortDevKey": "processor",
+                        "controlPortNumber": 2,
+                        "comParams": {
+                            "protocol": "RS232",
+                            "baudRate": 9600,
+                            "dataBits": 8,
+                            "stopBits": 1,
+                            "parity": "None",
+                            "softwareHandshake": "None",
+                            "hardwareHandshake": "None",
+                            "pacing": 0
+                        },                        
+                        "tcpSshProperties": {
+                            "address": "10.0.0.200",
+                            "port": 20060,
+                            "username": "",
+                            "password": "",
+                            "autoReconnect": true,
+                            "autoReconnectIntervalMs": 10000
+                        }                        
+                    }
+                }
+            },
+            {
+                "key": "display-3",
+                "name": "Display",
+                "type": "sonybravia",
+                "group": "display",
+                "properties": {
+                    "control": {
+                        "method": "tcpip",
+                        "controlPortDevKey": "processor",
+                        "controlPortNumber": 3,
+                        "comParams": {
+                            "protocol": "RS232",
+                            "baudRate": 9600,
+                            "dataBits": 8,
+                            "stopBits": 1,
+                            "parity": "None",
+                            "softwareHandshake": "None",
+                            "hardwareHandshake": "None",
+                            "pacing": 0
+                        },                        
+                        "tcpSshProperties": {
+                            "address": "10.0.0.200",
+                            "port": 20060,
+                            "username": "",
+                            "password": "",
+                            "autoReconnect": true,
+                            "autoReconnectIntervalMs": 10000
+                        }                        
+                    }
+                }
+            },
+            {
                 "key": "plugin-bridge1",
                 "uid": 39,
                 "name": "Plugin Bridge",
@@ -62,6 +124,14 @@
                         {
                             "deviceKey": "display-1",
                             "joinStart": 1
+                        },
+                        {
+                            "deviceKey": "display-2",
+                            "joinStart": 51
+                        },
+                        {
+                            "deviceKey": "display-3",
+                            "joinStart": 101
                         }
                     ]
                 }

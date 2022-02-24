@@ -66,6 +66,11 @@ namespace SonyBraviaEpi
         private const long DebugTimerDefaultMs = 90000; // 15-minutes (90,000-ms)
 
         /// <summary>
+        /// Key of this instance
+        /// </summary>
+        public static string Key { get; set; }
+
+        /// <summary>
         /// Trace level (0)
         /// </summary>
         /// <remarks>
@@ -156,8 +161,8 @@ namespace SonyBraviaEpi
                 return;
 
             var device = DeviceManager.GetDeviceForKey(key);            
-            if (device == null || !device.Key.Equals(key))
-            {
+            if (device == null)
+            {                
                 CrestronConsole.ConsoleCommandResponse("SETPLUGINDEBUGLEVEL unable to get device with key: '{0}'", key);
                 return;
             }
