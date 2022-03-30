@@ -1,0 +1,21 @@
+// show all devices registered with essentials
+devlist
+
+// test public methods for the deviceKey used
+devjson:1 {"deviceKey":"display-1", "methodName":"PowerOn", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"PowerOff", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"PowerToggle", "params":[]}
+
+devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi1", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi2", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi3", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi4", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi5", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputVideo1", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputVideo2", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputVideo3", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent1", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent2", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent3", "params":[]}
+devjson:1 {"deviceKey":"display-1", "methodName":"InputPc", "params":[]}
+

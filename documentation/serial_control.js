@@ -1,127 +1,11 @@
-﻿using System.Linq;
-using PepperDash.Core;
-using PepperDash.Essentials.Core.Queues;
+/*
+ Copyright 2014-2021 Sony Home Entertainment & Sound Products Inc.
+ Copyright 2021 Sony Corporation
+*/
 
-namespace SonyBraviaEpi
-{
-    public static class Commands
-    {
-        public static readonly byte[] PowerOn = {0x8c, 0x00, 0x00, 0x02, 0x01};
-        public static readonly byte[] PowerOff = {0x8c, 0x00, 0x00, 0x02, 0x00};
-        public static readonly byte[] PowerQuery = {0x83, 0x00, 0x00, 0xFF, 0xFF};
-        public static readonly byte[] InputVideo1 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x01};
-        public static readonly byte[] InputVideo2 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x02};
-        public static readonly byte[] InputVideo3 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x03};
-        public static readonly byte[] InputComponent1 = {0x8C, 0x00, 0x02, 0x03, 0x03, 0x01};
-        public static readonly byte[] InputComponent2 = {0x8C, 0x00, 0x02, 0x03, 0x03, 0x02};
-        public static readonly byte[] InputComponent3 = {0x8C, 0x00, 0x02, 0x03, 0x03, 0x03};
-        public static readonly byte[] InputHdmi1 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x01};
-        public static readonly byte[] InputHdmi2 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x02};
-        public static readonly byte[] InputHdmi3 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x03};
-        public static readonly byte[] InputHdmi4 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x04};
-        public static readonly byte[] InputHdmi5 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x05};
-        public static readonly byte[] InputPc1 = {0x8C, 0x00, 0x02, 0x03, 0x05, 0x01};
-        public static readonly byte[] InputQuery = {0x83, 0x00, 0x02, 0xFF, 0xFF};
+const serialport = require("serialport");
 
-        public static byte CalculateChecksum(this byte[] data)
-        {
-            // method defined by Sony API guide
-            //var result = data.Aggregate(0x00, (current, b) => current + b);            
-            //return Convert.ToByte(result > 0xff ? data[data.Length - 1] : result);
-
-            // method used in legacy S+ modules
-            var result = data.Sum(x => (long)x);
-            return unchecked ((byte) result);
-        }
-
-        public static byte[] WithChecksum(this byte[] data)
-        {
-            var checksum = data.CalculateChecksum();
-            var newArray = data.ToList();
-            newArray.Add(checksum);
-            return newArray.ToArray();
-        }
-
-        public static IQueueMessage GetPowerOn(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, PowerOn.WithChecksum());
-        }
-
-        public static IQueueMessage GetPowerOff(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, PowerOff.WithChecksum());
-        }
-
-        public static IQueueMessage GetPowerQuery(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, PowerQuery.WithChecksum());
-        }
-
-        public static IQueueMessage GetHdmi1(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputHdmi1.WithChecksum());
-        }
-
-        public static IQueueMessage GetHdmi2(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputHdmi2.WithChecksum());
-        }
-
-        public static IQueueMessage GetHdmi3(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputHdmi3.WithChecksum());
-        }
-
-        public static IQueueMessage GetHdmi4(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputHdmi4.WithChecksum());
-        }
-
-        public static IQueueMessage GetHdmi5(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputHdmi5.WithChecksum());
-        }
-
-        public static IQueueMessage GetVideo1(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputVideo1.WithChecksum());
-        }
-
-        public static IQueueMessage GetVideo2(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputVideo2.WithChecksum());
-        }
-
-        public static IQueueMessage GetVideo3(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputVideo3.WithChecksum());
-        }
-
-        public static IQueueMessage GetComponent1(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputComponent1.WithChecksum());
-        }
-
-        public static IQueueMessage GetComponent2(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputComponent2.WithChecksum());
-        }
-
-        public static IQueueMessage GetComponent3(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputComponent3.WithChecksum());
-        }
-
-        public static IQueueMessage GetPc(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputPc1.WithChecksum());
-        }
-
-        public static IQueueMessage GetInputQuery(IBasicCommunication coms)
-        {
-            return new ComsMessage(coms, InputQuery.WithChecksum());
-        }
-        /*const commands = {
+const commands = {
   "power_on":                        [0x8C, 0x00, 0x00, 0x02, 0x01],
   "power_off":                       [0x8C, 0x00, 0x00, 0x02, 0x00],
   "power_get":                       [0x83, 0x00, 0x00, 0xFF, 0xFF],
@@ -248,6 +132,178 @@ namespace SonyBraviaEpi
   "signage_productinfo1":            [0x83, 0x00, 0x6E, 0xFF, 0xFF],
   "signage_productinfo2":            [0x83, 0x00, 0x6D, 0xFF, 0xFF],
   "signage_productinfo3":            [0x83, 0x00, 0x6C, 0xFF, 0xFF]
-}*/
-    }
 }
+const answers = {
+  "0": "Completed (Normal)",
+  "1": "Limit Over (Abnormal End – over maximum value)",
+  "2": "Limit Over (Abnormal End – under minimum value)",
+  "3": "Command Canceled (Abnormal End)",
+  "4": "Parse Error (Data Format Error)"
+}
+
+const EL_OK = 0;
+const EL_OPEN_ERROR = 1;
+const EL_WRITE_ERROR = 2;
+const EL_ANSWER_ERROR = 3;
+const EL_CHECKSUM_UNMATCHED = 4;
+const EL_HEADER_UNKNOWN = 5;
+const EL_ANSWER_UNKNOWN = 6;
+const EL_CMD_TYPE_UNKNOWN = 7;
+const EL_CMD_UNKNOWN = 8;
+
+let resp_index = 0;
+let resp_checksum = 0;
+let resp_answer = 0;
+let resp_return_data_size = 0;
+let cmd_type = 0;
+let errorlevel = EL_OK;
+
+function toHex(v) {
+  return '0x' + (('00' + v.toString(16).toUpperCase()).substr(-2));
+}
+
+function resp_log(index, value, msg) {
+  console.log('  Response[' + index + ']=' + toHex(value) + ': ' + msg);
+}
+
+function getKeys(d) {
+  let d_keys = [];
+  for (let key in d) {
+    d_keys.push(key);
+  }
+  return d_keys;
+}
+
+function checkChecksum(sp, value, checksum, index) {
+  if ((checksum & 0xFF)=== value) {
+    sp.close();
+    resp_log(index, value, 'Checksum matched');
+  } else {
+    sp.close();
+    errorlevel = EL_CHECKSUM_UNMATCHED;              
+    resp_log(index, value, 'Error: Checksum unmatched, ' + toHex(checksum));
+  }  
+}
+
+if (process.argv.length <= 3) {
+  console.log("Usage: node serial_control [PORTNAME] [CMDNAME]");
+  console.log("");
+  console.log("Commands:");
+  const command_keys = getKeys(commands).sort();
+  for (let i = 0; i < command_keys.length; i++) {
+    console.log("  " + command_keys[i]);
+  }
+  console.log("");
+  console.log("Serial Ports:");
+  console.log("  [PORTNAME]" + " ".repeat(30 - "[PORTNAME]".length) + "[VENDOR]");
+  serialport.list((err, ports) => {
+    ports.forEach ((port) => {
+      let len = port.comName.length;
+      console.log("  " + port.comName + " ".repeat(30 - len) + port.manufacturer);
+    })
+  })
+  return;
+}
+const portname = process.argv[2];
+const cmdname = process.argv[3];
+if (commands[cmdname] === undefined) {
+  errorlevel = EL_CMD_UNKNOWN;
+  return console.log('Error: Unknown command "' + cmdname + '"');
+}
+
+process.on('exit', () => {
+  process.exit(errorlevel);
+});
+
+const sp = new serialport(portname, {
+  baudRate: 9600,
+  dataBits: 8,
+  parity: 'none',
+  stopBits: 1,
+  flowControl: false,
+  parser: new serialport.parsers.Readline("\n")
+});
+
+sp.on("data", (data) => {
+  for (let i = 0; i < data.length; i++) {
+    if (resp_index == 0) { // HEADER
+      if (data[i] == 0x70) {
+        resp_log(resp_index, data[i], 'ANSWER');
+      } else {
+        sp.close();        
+        errorlevel = EL_HEADER_UNKNOWN;
+        return resp_log(resp_index, data[i], 'Error: Header is not ANSWER(0x70), ' + toHex(data[i]));
+      } 
+    } else if (resp_index == 1) { // ANSWER
+      resp_answer = data[i];
+      let answer = answers[data[i]];
+      if (answer !== undefined) { 
+        resp_log(resp_index, data[i], answer);
+        if (resp_answer !== 0x00) {
+          errorlevel = EL_ANSWER_ERROR;
+        }
+      } else {
+        sp.close();        
+        errorlevel = EL_ANSWER_UNKNOWN;
+        return resp_log(resp_index, data[i], 'Error: Unknown answer, ' + toHex(data[i]));
+      }
+    } else {
+      if (cmd_type == 0x8C) { // Response to Control Request
+        if (resp_index == 2) {
+          return checkChecksum(sp, data[i], resp_checksum, resp_index);
+        }
+      } else if (cmd_type == 0x83) {  // Response to Query Request
+        if (resp_index == 2) {
+          if (resp_answer == 0x00) {
+            resp_return_data_size = data[i];
+            resp_return_data_size -= 1;
+            resp_log(resp_index, data[i], 'Return Data Size');
+          } else {
+            return checkChecksum(sp, data[i], resp_checksum, resp_index);
+          }
+        } else if (resp_index >= 3 && resp_index < (3 + resp_return_data_size)) {
+          resp_log(resp_index, data[i], 'Return Data[' + (resp_index - 3) + ']');
+        } else if (resp_index == (3 + resp_return_data_size)) {
+          return checkChecksum(sp, data[i], resp_checksum, resp_index);
+        }
+      } else {
+        sp.close();
+        errorlevel = EL_CMD_TYPE_UNKNOWN;
+        return resp_log(resp_index, data[i], 'Error: Unknown command type');
+      }
+    }
+    resp_index += 1;
+    resp_checksum += data[i];
+  }
+});
+
+sp.on("open", (err) => {
+  if (err) {
+    errorlevel = EL_OPEN_ERROR;
+    sp.close();    
+    return console.log("Error on open: " + err.message);
+  } else {
+    console.log("Port '" + portname + "' opened.");
+    let buf = commands[cmdname];
+    buf.push(0); // for checksum
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      if (i == buf.length - 1) {
+        buf[i] = sum;
+      } else {
+        sum += buf[i];
+      }
+      console.log("   Request[" + i + "]=" + toHex(buf[i]));
+    }
+    resp_index = 0
+    cmd_type = buf[0];
+    sp.write(buf, (err) => {
+      if (err) {
+        errorlevel = EL_WRITE_ERROR;
+        sp.close();
+        return console.log('Error on write: ', err.message);
+      }
+      console.log("Command '" + cmdname + "' written.");
+    });
+  }
+});
