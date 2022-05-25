@@ -11,7 +11,7 @@ namespace SonyBraviaEpi
         {
             TypeNames = new List<string>() { "sonybravia" };
 
-            MinimumEssentialsFrameworkVersion = "1.9.6";
+            MinimumEssentialsFrameworkVersion = "1.8.5";
         }
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)
