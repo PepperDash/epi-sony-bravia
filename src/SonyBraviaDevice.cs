@@ -9,6 +9,7 @@ using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.Queues;
+using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Devices.Displays;
 
 namespace SonyBraviaEpi
@@ -324,51 +325,51 @@ namespace SonyBraviaEpi
         public void BuildInputRoutingPorts()
         {
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
+                    RoutingPortNames.HdmiIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi1), this), 1);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
+                    RoutingPortNames.HdmiIn2, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi2), this), 2);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
+                    RoutingPortNames.HdmiIn3, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi3), this), 3);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi4", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
+                    RoutingPortNames.HdmiIn4, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi4), this), 4);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi5", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
+                    RoutingPortNames.HdmiIn5, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi5), this), 5);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "pc", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Vga,
+                    RoutingPortNames.VgaIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Vga,
                     new Action(InputVga1), this), 6);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "video1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
+                    RoutingPortNames.CompositeIn, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
                     new Action(InputVideo1), this), 7);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "video2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
+                    "CompositeIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
                     new Action(InputVideo2), this), 8);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "video3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
+                    "CompositeIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
                     new Action(InputVideo3), this), 9);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
+                    RoutingPortNames.ComponentIn, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputVideo3), this), 10);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
+                    "componentIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputComponent2), this), 11);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
+                    "componentIn3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputComponent3), this), 12);
         }
 
@@ -569,7 +570,13 @@ namespace SonyBraviaEpi
                         continue;
 
                     if (buffer.ElementAtOrDefault(0) != 0x70)
+                    {
+                        // 1. find header index
+                        // 2. if header index + 1 == 0x00 attempt to sum header index + 1
+                        // 2a. if sum == header then we have to assume we have an ACK reply (0x70,0x00,0x70)
                         buffer = buffer.CleanToFirstHeader();
+                    }
+                        
 
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessResponseQueue buffer(2): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
 
@@ -586,7 +593,7 @@ namespace SonyBraviaEpi
                         {
                             // we have an ACK in here, let's print it out and keep moving                            
                             switch (message.ToReadableString())
-                            {
+                            {                                
                                 // response to query request (abnormal end) - Command Cancelled
                                 // package is recieved normally, but the request is not acceptable in the current display status
                                 case "70-03-74":

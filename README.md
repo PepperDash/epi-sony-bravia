@@ -9,6 +9,8 @@ This is a plugin repo for Sony Bravia Displays.  At this time the plugin only su
 
 Verify the RS232 via Serial Connection control is enabled.  In testing, it was found the unit defaulted to RS232 via HDMI.
 
+Set device to **Normal Mode**, do not put the device in **Pro Mode** or **Pro Settings Mode**.  If they are put in either of the **Pro** modes requires **Remote Commander** out of **Pro** mode.
+
 | Property     | Value |
 | ------------ | ----- |
 | Baudrate     | 9,600 |
