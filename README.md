@@ -28,7 +28,7 @@ Verify the RS232 via Serial Connection control is enabled.  In testing, it was f
     "group": "display",
     "properties": {
         "control": {
-            "method": "comm",
+            "method": "com",
             "controlPortDevKey": "processor",
             "controlPortNumber": 1,
             "comParams": {
@@ -55,7 +55,7 @@ Verify the RS232 via Serial Connection control is enabled.  In testing, it was f
 
 ### Essentials Simple IP Device Configuration
 
-At this time Simple IP control has not been implemented.
+Simple IP control is currently **under development**
 
 ```json
 {
@@ -175,6 +175,8 @@ devjson:1 {"deviceKey":"display-1", "methodName":"PowerOn", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"PowerOff", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"PowerToggle", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"PowerPoll", "params":[]}
+
+Devjson:1 {"deviceKey":"display-1", "methodName":"ListRoutingInputPorts", "params": []}
 
 devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi1", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputHdmi2", "params":[]}
