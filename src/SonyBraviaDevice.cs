@@ -218,28 +218,7 @@ namespace SonyBraviaEpi
 
         public StatusMonitorBase CommunicationMonitor { get; private set; }
 
-        public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
-
-        //public void QueueCommand(byte[] bytes)
-        //{
-        //    if (bytes == null) return;
-
-        //    CommandQueue.Enqueue(new ComsMessage(_coms, bytes));
-        //}
-
-        //public void QueueCommand(string cmd)
-        //{
-        //    if (string.IsNullOrEmpty(cmd)) return;
-
-        //    CommandQueue.Enqueue(new ComsMessage(_coms, cmd));
-        //}
-
-        //public void QueueCommand(IQueueMessage msg)
-        //{
-        //    if (msg == null) return;
-
-        //    CommandQueue.Enqueue(msg);
-        //}
+        public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }        
 
         /// <summary>
         /// Poll device
@@ -541,6 +520,11 @@ namespace SonyBraviaEpi
 
         private object ProcessResponseQueue(object _)
         {
+            return _comsIsRs232 ? ProcessRs232Response(_) : ProcessSimpleIpResponse(_);
+        }
+
+        private object ProcessRs232Response(object _)
+        {
             var seperator = new string('-', 50);
 
             byte[] buffer = null;
@@ -552,7 +536,9 @@ namespace SonyBraviaEpi
                     if (bytes == null)
                         return null;
 
-                    //Debug.Console(ErrorLevel, this, "ProcessResponseQueue bytes: {0}", bytes.ToReadableString());
+                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}')", 
+                        bytes.ToReadableString(), bytes.Length);
 
                     if (buffer == null)
                         buffer = bytes;
@@ -564,22 +550,50 @@ namespace SonyBraviaEpi
                         buffer = newBuffer;
                     }
 
-                    Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue buffer(1): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')", 
+                        bytes.ToReadableString(), bytes.Length, buffer.ToReadableString(), buffer.Length);
 
                     if (!buffer.ContainsHeader())
+                    {
+                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: buffer-'{0}' (len-'{1}') did not contain a header",
+                            buffer.ToReadableString(), buffer.Length);
+                        Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                         continue;
+                    }
 
                     if (buffer.ElementAtOrDefault(0) != 0x70)
-                    {
-                        // 1. find header index
-                        // 2. if header index + 1 == 0x00 attempt to sum header index + 1
-                        // 2a. if sum == header then we have to assume we have an ACK reply (0x70,0x00,0x70)
+                    {                        
+                        // 1. find header index                        
                         buffer = buffer.CleanToFirstHeader();
+                        // 2. if header index + 1 == 0x00 attempt to sum header index + 1
+                        // 3. if sum == header then we have to assume we have an ACK reply (0x70,0x00,0x70)
+                        if (buffer[0] + buffer[1] == buffer[2])
+                        {
+                            
+                            Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: response to control request, buffer-'{0}' (len-'{1}')",
+                                buffer.ToReadableString(), buffer.Length);
+
+                            // TODO [ ] can this be turned into a Rs232ParseUtils method?
+                            var newBuffer = new byte[buffer.Length - 3];
+                            // copy the buffer to a new byte array EXCEPT the bytes[0][1][2]
+                            Array.Copy(buffer, 3, newBuffer, 0, buffer.Length - 3);
+
+                            if (newBuffer.Length == 0)
+                            {
+                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: response to control request, buffer-'{0}' (len-'{1}') is empty",
+                                    buffer.ToReadableString(), buffer.Length);
+                                Debug.Console(DebugLevels.ErrorLevel, this, seperator);
+                                return null;
+                            }
+                            
+                            buffer = newBuffer;
+                        }
                     }
-                        
 
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessResponseQueue buffer(2): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')",
+                        bytes.ToReadableString(), bytes.Length, buffer.ToReadableString(), buffer.Length);
 
+                    // TODO [ ] update the remaining method
                     while (buffer.Length >= 4)
                     {
                         Debug.Console(DebugLevels.DebugLevel, this, seperator);
@@ -593,7 +607,7 @@ namespace SonyBraviaEpi
                         {
                             // we have an ACK in here, let's print it out and keep moving                            
                             switch (message.ToReadableString())
-                            {                                
+                            {
                                 // response to query request (abnormal end) - Command Cancelled
                                 // package is recieved normally, but the request is not acceptable in the current display status
                                 case "70-03-74":
@@ -620,7 +634,7 @@ namespace SonyBraviaEpi
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessRs232Response message(2): {0}", message.ToReadableString());
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
@@ -654,12 +668,18 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Exception: {0}", ex.Message);
-                    Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Exception Stack Trace: {0}", ex.StackTrace);
+                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Exception: {0}", ex.Message);
+                    Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Exception Stack Trace: {0}", ex.StackTrace);
                     if (ex.InnerException != null)
-                        Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Inner Exception: {0}", ex.InnerException);
+                        Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Inner Exception: {0}", ex.InnerException);
                 }
             }
+        }
+
+        private object ProcessSimpleIpResponse(object _)
+        {
+
+            return null;
         }
     }
 }
