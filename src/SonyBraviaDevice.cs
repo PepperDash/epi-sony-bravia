@@ -13,11 +13,12 @@ using PepperDash.Essentials.Devices.Displays;
 
 namespace SonyBraviaEpi
 {
-    public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced, 
+    public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
         IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
         IOnline
     {
         private readonly IBasicCommunication _coms;
+        private readonly bool _comsIsRs232;
         public static GenericQueue CommandQueue;
 
         public static readonly CommunicationMonitorConfig DefaultMonitorConfig = new CommunicationMonitorConfig
@@ -37,14 +38,14 @@ namespace SonyBraviaEpi
         private bool _isCooling;
         private bool _isWarming;
         private readonly long _coolingTimeMs;
-        private readonly long _warmingtimeMs;        
+        private readonly long _warmingtimeMs;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="config"></param>
         /// <param name="comms"></param>
-        public SonyBraviaDevice(DeviceConfig config, IBasicCommunication comms) 
+        public SonyBraviaDevice(DeviceConfig config, IBasicCommunication comms)
             : base(config.Key, config.Name)
         {
             DebugLevels.Key = Key;
@@ -53,15 +54,30 @@ namespace SonyBraviaEpi
                 CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
 
             _coms = comms;
-            var powerQuery = Commands.GetPowerQuery(_coms);
-            //var inputQuery = Commands.GetInputQuery(_coms);
 
-            _powerOnCommand = Commands.GetPowerOn(_coms);
-            _powerOffCommand = Commands.GetPowerOff(_coms);
+            IQueueMessage powerQuery;
+            //IQueueMessage inputQuery;
+
+            var socket = _coms as ISocketStatus;
+            _comsIsRs232 = socket == null;
+            if (_comsIsRs232)
+            {
+                _powerOnCommand = Rs232Commands.GetPowerOn(_coms);
+                _powerOffCommand = Rs232Commands.GetPowerOff(_coms);
+                powerQuery = Rs232Commands.GetPowerQuery(_coms);
+                //inputQuery = Rs232Commands.GetInputQuery(_coms);
+            }
+            else
+            {
+                _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
+                _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
+                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
+                //inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
+            }
 
             var props = config.Properties.ToObject<SonyBraviaConfig>();
-            _coolingTimeMs = props.CoolingTimeMs > 9999 ? props.CoolingTimeMs : 20000;
-            _warmingtimeMs = props.WarmingTimeMs > 9999 ? props.WarmingTimeMs : 20000;
+            _coolingTimeMs = props.CoolingTimeMs ?? 20000;
+            _warmingtimeMs = props.WarmingTimeMs ?? 20000;
 
             var monitorConfig = props.CommunicationMonitorProperties ?? DefaultMonitorConfig;
 
@@ -94,7 +110,7 @@ namespace SonyBraviaEpi
                     Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
                         ex.Message, ex.StackTrace);
                 }
-            };            
+            };
 
             DeviceManager.AllDevicesActivated += (sender, args) =>
             {
@@ -106,7 +122,7 @@ namespace SonyBraviaEpi
                 catch (Exception ex)
                 {
                     Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
-                        ex.Message, ex.StackTrace);                    
+                        ex.Message, ex.StackTrace);
                 }
             };
         }
@@ -140,7 +156,7 @@ namespace SonyBraviaEpi
                 }
             }
         }
-        
+
         /// <summary>
         /// Device is cooling
         /// </summary>
@@ -185,7 +201,7 @@ namespace SonyBraviaEpi
         protected override Func<bool> PowerIsOnFeedbackFunc
         {
             get { return () => PowerIsOn; }
-        }        
+        }
 
         /// <summary>
         /// Link to API
@@ -202,6 +218,27 @@ namespace SonyBraviaEpi
         public StatusMonitorBase CommunicationMonitor { get; private set; }
 
         public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
+
+        //public void QueueCommand(byte[] bytes)
+        //{
+        //    if (bytes == null) return;
+
+        //    CommandQueue.Enqueue(new ComsMessage(_coms, bytes));
+        //}
+
+        //public void QueueCommand(string cmd)
+        //{
+        //    if (string.IsNullOrEmpty(cmd)) return;
+
+        //    CommandQueue.Enqueue(new ComsMessage(_coms, cmd));
+        //}
+
+        //public void QueueCommand(IQueueMessage msg)
+        //{
+        //    if (msg == null) return;
+
+        //    CommandQueue.Enqueue(msg);
+        //}
 
         /// <summary>
         /// Poll device
@@ -254,9 +291,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void PowerPoll()
         {
-            //CommandQueue.Enqueue(Commands.GetPowerQuery(_coms));
-            byte[] poll = {0x83, 0x00, 0x00, 0xFF, 0xFF, 0x81};
-            CommandQueue.Enqueue(new ComsMessage(_coms, poll));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetPowerQuery(_coms)
+                : SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
         }
 
         /// <summary>
@@ -279,7 +316,7 @@ namespace SonyBraviaEpi
         {
             input.Port = port;
             InputPorts.Add(input);
-        }        
+        }
 
         /// <summary>
         /// Build input routing ports
@@ -287,35 +324,35 @@ namespace SonyBraviaEpi
         public void BuildInputRoutingPorts()
         {
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
+                    "hdmi1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi1), this), 1);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
+                    "hdmi2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi2), this), 2);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
+                    "hdmi3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi3), this), 3);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi4", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
+                    "hdmi4", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi4), this), 4);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "hdmi5", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, 
+                    "hdmi5", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
                     new Action(InputHdmi5), this), 5);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "pc", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Vga, 
+                    "pc", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Vga,
                     new Action(InputVga1), this), 6);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "video1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite, 
+                    "video1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
                     new Action(InputVideo1), this), 7);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "video2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite, 
+                    "video2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
                     new Action(InputVideo2), this), 8);
 
             AddInputRoutingPort(new RoutingInputPort(
@@ -323,24 +360,26 @@ namespace SonyBraviaEpi
                     new Action(InputVideo3), this), 9);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component, 
+                    "component1", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputVideo3), this), 10);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component, 
+                    "component2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputComponent2), this), 11);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "component3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component, 
+                    "component3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputComponent3), this), 12);
         }
-        
+
         /// <summary>
         /// Select HDMI 1 input
         /// </summary>
         public void InputHdmi1()
         {
-            CommandQueue.Enqueue(Commands.GetHdmi1(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetHdmi1(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
         }
 
         /// <summary>
@@ -348,7 +387,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi2()
         {
-            CommandQueue.Enqueue(Commands.GetHdmi2(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetHdmi2(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
         }
 
         /// <summary>
@@ -356,7 +397,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi3()
         {
-            CommandQueue.Enqueue(Commands.GetHdmi3(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetHdmi3(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
         }
 
         /// <summary>
@@ -364,7 +407,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi4()
         {
-            CommandQueue.Enqueue(Commands.GetHdmi4(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetHdmi4(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
         }
 
         /// <summary>
@@ -372,7 +417,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi5()
         {
-            CommandQueue.Enqueue(Commands.GetHdmi5(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetHdmi5(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));
         }
 
         /// <summary>
@@ -380,7 +427,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputVideo1()
         {
-            CommandQueue.Enqueue(Commands.GetVideo1(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVideo1(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1));
         }
 
         /// <summary>
@@ -388,7 +437,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputVideo2()
         {
-            CommandQueue.Enqueue(Commands.GetVideo2(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVideo2(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2));
         }
 
         /// <summary>
@@ -396,7 +447,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputVideo3()
         {
-            CommandQueue.Enqueue(Commands.GetVideo3(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVideo3(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3));
         }
 
         /// <summary>
@@ -404,7 +457,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputComponent1()
         {
-            CommandQueue.Enqueue(Commands.GetComponent1(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetComponent1(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1));
         }
 
         /// <summary>
@@ -412,7 +467,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputComponent2()
         {
-            CommandQueue.Enqueue(Commands.GetComponent2(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetComponent2(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2));
         }
 
         /// <summary>
@@ -420,7 +477,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputComponent3()
         {
-            CommandQueue.Enqueue(Commands.GetComponent3(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetComponent3(_coms)
+                : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3));
         }
 
         /// <summary>
@@ -428,7 +487,9 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputVga1()
         {
-            CommandQueue.Enqueue(Commands.GetPc(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetComponent1(_coms)
+                : null );
         }
 
         /// <summary>
@@ -436,9 +497,11 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputPoll()
         {
-            //CommandQueue.Enqueue(Commands.GetInputQuery(_coms));
-            byte[] poll = { 0x83, 0x00, 0x02, 0xFF, 0xFF, 0x83 };
-            CommandQueue.Enqueue(new ComsMessage(_coms, poll));
+            // byte[] poll = { 0x83, 0x00, 0x02, 0xFF, 0xFF, 0x83 };
+            //CommandQueue.Enqueue(Rs232Commands.GetInputQuery(_coms));
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetInputQuery(_coms)
+                : SimpleIpCommands.GetQueryCommand(_coms, "INPT"));
         }
 
         /// <summary>
@@ -527,30 +590,30 @@ namespace SonyBraviaEpi
                                 // response to query request (abnormal end) - Command Cancelled
                                 // package is recieved normally, but the request is not acceptable in the current display status
                                 case "70-03-74":
-                                {
-                                    Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());                            
-                                    break;
-                                }
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());
+                                        break;
+                                    }
                                 // response to query request (abnormal end) - ParseError (Data Format Error)
                                 case "70-04-74":
-                                {
-                                    Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
-                                    break;
-                                }
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
+                                        break;
+                                    }
                                 default:
-                                {
-                                    Debug.Console(DebugLevels.DebugLevel, this, "Found Unknown Response Type: {0}", message.ToReadableString());
-                                    break;
-                                }
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Unknown Response Type: {0}", message.ToReadableString());
+                                        break;
+                                    }
                             }
-                            
+
                             buffer = buffer.CleanOutFirstMessage();
                             Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue buffer(5): {0}", buffer.ToReadableString());
                             continue;
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());                        
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue message(2): {0}", message.ToReadableString());
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
@@ -584,9 +647,9 @@ namespace SonyBraviaEpi
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Exception: {0}",ex.Message);
+                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Exception: {0}", ex.Message);
                     Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Exception Stack Trace: {0}", ex.StackTrace);
-                    if(ex.InnerException != null)
+                    if (ex.InnerException != null)
                         Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error, "ProcessResponseQueue Inner Exception: {0}", ex.InnerException);
                 }
             }
