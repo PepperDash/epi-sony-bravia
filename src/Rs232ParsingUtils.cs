@@ -6,6 +6,8 @@ namespace SonyBraviaEpi
 {
     public static class Rs232ParsingUtils
     {
+        private const byte Header = 0x70;
+
         public static bool ParsePowerResponse(this byte[] response, out bool power)
         {
             // TODO [ ] actually add in parsing
@@ -18,7 +20,7 @@ namespace SonyBraviaEpi
             }
 
             power = false;
-            return false;            
+            return false;
         }
 
         public static bool ParseInputResponse(this byte[] response, out string input)
@@ -55,12 +57,21 @@ namespace SonyBraviaEpi
 
         public static int FirstHeaderIndex(this byte[] bytes)
         {
-            return bytes.ToList().IndexOf(0x70);
+            return bytes.ToList().IndexOf(Header);
         }
 
         private static byte[] GetFirstMessageWithMultipleHeaders(this byte[] bytes)
         {
-            var secondHeaderIndex = bytes.ToList().FindIndex(1, IsHeader().ToPredicate());
+            // any less than 3-bytes, we don't have a complete message
+            if (bytes.Length < 3) return bytes;
+
+            var secondHeaderIndex = bytes.ToList().FindIndex(1, IsHeader().ToPredicate());            
+
+            // ex. 0x70,0x00,0x70 (valid ACK response) - skip to byte[3]
+            if ((bytes[0] + bytes[1] == bytes[2]) && (bytes[2] == Header)) secondHeaderIndex++;
+
+            if (secondHeaderIndex <= 0) secondHeaderIndex = bytes.Length;
+
             return bytes.Take(secondHeaderIndex).ToArray();
         }
 
@@ -77,7 +88,16 @@ namespace SonyBraviaEpi
 
         public static byte[] CleanOutFirstMessage(this byte[] bytes)
         {
+            // any less than 3-bytes, we don't have a complete message
+            if (bytes.Length < 3) return bytes;
+
             var secondHeaderIndex = bytes.ToList().FindIndex(1, IsHeader().ToPredicate());
+            
+            // ex. 0x70,0x00,0x70 (valid ACK response) - skip to byte[3]
+            if ((bytes[0] + bytes[1] == bytes[2]) && (bytes[2] == Header)) secondHeaderIndex++;
+
+            if (secondHeaderIndex <= 0) secondHeaderIndex = bytes.Length;
+
             return bytes.Skip(secondHeaderIndex).ToArray();
         }
 
@@ -88,7 +108,7 @@ namespace SonyBraviaEpi
 
         private static Func<byte, bool> IsHeader()
         {
-            const byte header = 0x70;
+            const byte header = Header;
             return t => t == header;
         }
 

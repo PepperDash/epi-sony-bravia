@@ -9,7 +9,7 @@ namespace SonyBraviaEpi
     {
         public SonyBraviaFactory()
         {
-            TypeNames = new List<string>() { "sonybravia", "sonybraviarest", "sonybraviasimpleip" };
+            TypeNames = new List<string> { "sonybravia", "sonybraviarest", "sonybraviasimpleip" };
 
             MinimumEssentialsFrameworkVersion = "1.8.5";
         }

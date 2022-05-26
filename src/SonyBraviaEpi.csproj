@@ -89,6 +89,7 @@
   <ItemGroup>
     <Compile Include="DebugLevels.cs" />
     <Compile Include="SimpleIpCommands.cs" />
+    <Compile Include="SimpleIpParsingUtils.cs" />
     <Compile Include="SonyBraviaConfig.cs" />
     <Compile Include="SonyBraviaDevice.cs" />
     <Compile Include="Rs232Commands.cs" />

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
@@ -33,7 +35,8 @@ namespace SonyBraviaEpi
         private readonly IQueueMessage _powerOffCommand;
         private readonly IQueueMessage _powerOnCommand;
 
-        private readonly CrestronQueue<byte[]> _queue = new CrestronQueue<byte[]>(50);
+        private readonly CrestronQueue<byte[]> _queueRs232;
+        private readonly CrestronQueue<string> _queueSimpleIp;
         private string _currentInput;
         private bool _powerIsOn;
         private bool _isCooling;
@@ -51,37 +54,42 @@ namespace SonyBraviaEpi
         {
             DebugLevels.Key = Key;
 
-            if (CommandQueue == null)
-                CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
-
-            _coms = comms;
-
-            IQueueMessage powerQuery;
-            //IQueueMessage inputQuery;
-
-            var socket = _coms as ISocketStatus;
-            _comsIsRs232 = socket == null;
-            if (_comsIsRs232)
-            {
-                _powerOnCommand = Rs232Commands.GetPowerOn(_coms);
-                _powerOffCommand = Rs232Commands.GetPowerOff(_coms);
-                powerQuery = Rs232Commands.GetPowerQuery(_coms);
-                //inputQuery = Rs232Commands.GetInputQuery(_coms);
-            }
-            else
-            {
-                _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
-                _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
-                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
-                //inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
-            }
-
             var props = config.Properties.ToObject<SonyBraviaConfig>();
             _coolingTimeMs = props.CoolingTimeMs ?? 20000;
             _warmingtimeMs = props.WarmingTimeMs ?? 20000;
 
-            var monitorConfig = props.CommunicationMonitorProperties ?? DefaultMonitorConfig;
+            IQueueMessage powerQuery;
+            IQueueMessage inputQuery;
 
+            _coms = comms;
+            var socket = _coms as ISocketStatus;
+            _comsIsRs232 = socket == null;
+            if (_comsIsRs232)
+            {
+                _queueRs232 = new CrestronQueue<byte[]>(50);
+                _coms.BytesReceived += (sender, args) => _queueRs232.Enqueue(args.Bytes);
+
+                _powerOnCommand = Rs232Commands.GetPowerOn(_coms);
+                _powerOffCommand = Rs232Commands.GetPowerOff(_coms);
+                powerQuery = Rs232Commands.GetPowerQuery(_coms);
+                inputQuery = Rs232Commands.GetInputQuery(_coms);
+            }
+            else
+            {
+                _queueSimpleIp = new CrestronQueue<string>(50);
+                var comsGather = new CommunicationGather(_coms, "\n");
+                comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
+
+                _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
+                _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
+                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
+                inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
+            }
+
+            if (CommandQueue == null)
+                CommandQueue = new GenericQueue(string.Format("{0}-commandQueue", config.Key), 50);
+
+            var monitorConfig = props.CommunicationMonitorProperties ?? DefaultMonitorConfig;
             CommunicationMonitor = new GenericCommunicationMonitor(
                 this, _coms, monitorConfig.PollInterval, monitorConfig.TimeToWarning, monitorConfig.TimeToError,
                 PowerPoll);
@@ -89,10 +97,7 @@ namespace SonyBraviaEpi
             BuildInputRoutingPorts();
 
             var worker = new Thread(ProcessResponseQueue, null);
-            //_pollTimer = new CTimer(Poll, new[] {PowerPoll(), InputPoll()}, Timeout.Infinite);
-            _pollTimer = new CTimer(Poll, new[] { powerQuery }, Timeout.Infinite);
-
-            _coms.BytesReceived += (sender, args) => _queue.Enqueue(args.Bytes);
+            _pollTimer = new CTimer(Poll, new[] { powerQuery, inputQuery }, Timeout.Infinite);
 
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
@@ -103,7 +108,7 @@ namespace SonyBraviaEpi
 
                     _pollTimer.Stop();
                     _pollTimer.Dispose();
-                    _queue.Enqueue(null);
+                    _queueRs232.Enqueue(null);
                     worker.Join();
                 }
                 catch (Exception ex)
@@ -218,7 +223,7 @@ namespace SonyBraviaEpi
 
         public StatusMonitorBase CommunicationMonitor { get; private set; }
 
-        public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }        
+        public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
 
         /// <summary>
         /// Poll device
@@ -469,7 +474,7 @@ namespace SonyBraviaEpi
         {
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetComponent1(_coms)
-                : null );
+                : null);
         }
 
         /// <summary>
@@ -532,12 +537,11 @@ namespace SonyBraviaEpi
             {
                 try
                 {
-                    var bytes = _queue.Dequeue();
-                    if (bytes == null)
-                        return null;
+                    var bytes = _queueRs232.Dequeue();
+                    if (bytes == null) return null;
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}')", 
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}')",
                         bytes.ToReadableString(), bytes.Length);
 
                     if (buffer == null)
@@ -550,58 +554,30 @@ namespace SonyBraviaEpi
                         buffer = newBuffer;
                     }
 
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')", 
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')",
                         bytes.ToReadableString(), bytes.Length, buffer.ToReadableString(), buffer.Length);
 
                     if (!buffer.ContainsHeader())
                     {
                         Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: buffer-'{0}' (len-'{1}') did not contain a header",
                             buffer.ToReadableString(), buffer.Length);
-                        Debug.Console(DebugLevels.ErrorLevel, this, seperator);
+
                         continue;
                     }
 
                     if (buffer.ElementAtOrDefault(0) != 0x70)
-                    {                        
-                        // 1. find header index                        
                         buffer = buffer.CleanToFirstHeader();
-                        // 2. if header index + 1 == 0x00 attempt to sum header index + 1
-                        // 3. if sum == header then we have to assume we have an ACK reply (0x70,0x00,0x70)
-                        if (buffer[0] + buffer[1] == buffer[2])
-                        {
-                            
-                            Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: response to control request, buffer-'{0}' (len-'{1}')",
-                                buffer.ToReadableString(), buffer.Length);
-
-                            // TODO [ ] can this be turned into a Rs232ParseUtils method?
-                            var newBuffer = new byte[buffer.Length - 3];
-                            // copy the buffer to a new byte array EXCEPT the bytes[0][1][2]
-                            Array.Copy(buffer, 3, newBuffer, 0, buffer.Length - 3);
-
-                            if (newBuffer.Length == 0)
-                            {
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: response to control request, buffer-'{0}' (len-'{1}') is empty",
-                                    buffer.ToReadableString(), buffer.Length);
-                                Debug.Console(DebugLevels.ErrorLevel, this, seperator);
-                                return null;
-                            }
-                            
-                            buffer = newBuffer;
-                        }
-                    }
 
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')",
                         bytes.ToReadableString(), bytes.Length, buffer.ToReadableString(), buffer.Length);
 
-                    // TODO [ ] update the remaining method
-                    while (buffer.Length >= 4)
+                    while (buffer.Length >= 3)
                     {
-                        Debug.Console(DebugLevels.DebugLevel, this, seperator);
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue buffer(3): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
                         var message = buffer.GetFirstMessage();
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue message(1): {0} | message.Length: {1}", message.ToReadableString(), message.Length);
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue buffer(4): {0} | buffer.Length: {1}", buffer.ToReadableString(), buffer.Length);
-                        Debug.Console(DebugLevels.DebugLevel, this, seperator);
+                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}') | message-'{4}' (len-'{5}')",
+                            bytes.ToReadableString(), bytes.Length,
+                            buffer.ToReadableString(), buffer.Length,
+                            message.ToReadableString(), message.Length);
 
                         if (message.Length < 4)
                         {
@@ -610,43 +586,60 @@ namespace SonyBraviaEpi
                             {
                                 // response to query request (abnormal end) - Command Cancelled
                                 // package is recieved normally, but the request is not acceptable in the current display status
-                                case "70-03-74":
+                                case "07-00-70":
                                     {
-                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Command Cancelled: {0}", message.ToReadableString());
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Control complete ({0})", message.ToReadableString());
                                         break;
                                     }
-                                // response to query request (abnormal end) - ParseError (Data Format Error)
+                                case "07-01-71":
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Abnormal End: over maximum value ({0})", message.ToReadableString());
+                                        break;
+                                    }
+                                case "07-02-72":
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Abnormal End: under minimum value ({0})", message.ToReadableString());
+                                        break;
+                                    }
+                                case "70-03-73":
+                                    {
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Abnormal End: command cancelled ({0})", message.ToReadableString());
+                                        break;
+                                    }
                                 case "70-04-74":
                                     {
-                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Abnormal End Response, Parse Error (Data Format Error): {0}", message.ToReadableString());
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Abnormal End: parse error/data format error ({0})", message.ToReadableString());
                                         break;
                                     }
                                 default:
                                     {
-                                        Debug.Console(DebugLevels.DebugLevel, this, "Found Unknown Response Type: {0}", message.ToReadableString());
+                                        Debug.Console(DebugLevels.DebugLevel, this, "Unknown Response: {0}", message.ToReadableString());
                                         break;
                                     }
                             }
 
                             buffer = buffer.CleanOutFirstMessage();
-                            Debug.Console(DebugLevels.DebugLevel, this, "ProcessResponseQueue buffer(5): {0}", buffer.ToReadableString());
+                            Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: buffer-'{0}' (len-'{1}')",
+                                buffer.ToReadableString(), buffer.Length);
+
                             continue;
                         }
 
                         // we have a full message, lets check it out
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessRs232Response message(2): {0}", message.ToReadableString());
+                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: message-'{0}' (len-'{1}')",
+                            message.ToReadableString(), message.Length);
 
                         var dataSize = message[2];
                         var totalDataSize = dataSize + 3;
                         var isComplete = totalDataSize == message.Length;
                         Debug.Console(
-                            DebugLevels.DebugLevel, this, "Data Size: {0} | Total Data Size: {1} | Message Size: {2}", dataSize,
-                            totalDataSize, message.Length);
+                            DebugLevels.ErrorLevel, this, "ProcessRs232Response: dataSize-'{0}' | totalDataSize-'{1}' | message.Length-'{2}'",
+                            dataSize, totalDataSize, message.Length);
 
                         if (!isComplete)
                         {
                             Debug.Console(DebugLevels.DebugLevel, this, "Message is incomplete... spinning around");
-                            break;
+                            continue;
                         }
 
                         bool powerResult;
@@ -664,6 +657,8 @@ namespace SonyBraviaEpi
                         }
 
                         buffer = buffer.NumberOfHeaders() > 1 ? buffer.CleanOutFirstMessage() : new byte[0];
+
+                        Debug.Console(DebugLevels.DebugLevel, this, seperator);
                     }
                 }
                 catch (Exception ex)
@@ -672,14 +667,106 @@ namespace SonyBraviaEpi
                     Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Exception Stack Trace: {0}", ex.StackTrace);
                     if (ex.InnerException != null)
                         Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Inner Exception: {0}", ex.InnerException);
+
+                    Debug.Console(DebugLevels.DebugLevel, this, seperator);
                 }
             }
         }
 
         private object ProcessSimpleIpResponse(object _)
         {
+            var seperator = new string('-', 50);
 
-            return null;
+            while (true)
+            {
+                try
+                {
+                    var response = _queueSimpleIp.Dequeue();
+                    if (response == null) return null;
+
+                    // http://regexstorm.net/tester
+                    // *([A,C,E,N])(?<command>POWR|INPT|VOLU|AMUT)(?<parameters>.[Ff]+|\d+)
+                    // *(?<type>[A,C,E,N]{1})(?<command>[A-Za-z]{4})(?<parameters>.\w+)
+                    // - CPOWR0000000000000000\n
+                    // - AINPT0000000000000001\n
+                    // - CVOLU0000000000000001\n
+                    // - AAMUTFFFFFFFFFFFFFFFF\n
+                    var expression = new Regex(@"(?<type>[A,C,E,N]{1})(?<command>[A-Za-z]{4})(?<parameters>.\w+)", RegexOptions.None);
+                    var matches = expression.Match(response);
+
+                    if (!matches.Success)
+                    {
+                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown resonse '{0}'", response);
+                        return null;
+                    }
+
+                    var type = matches.Groups["types"].Value;
+                    var command = matches.Groups["command"].Value;
+                    var parameters = matches.Groups["parameters"].Value;
+
+                    switch (command)
+                    {
+                        case "POWR":
+                            {
+                                PowerIsOn = Convert.ToInt16(parameters) == 1;
+                                break;
+                            }
+                        case "INPUT":
+                            {
+                                var parts = parameters.SplitInParts(8);
+                                var inputParts = parts as IList<string> ?? parts.ToList();
+                                var inputType = (SimpleIpCommands.InputTypes)Convert.ToInt16(inputParts.ElementAt(0));
+                                var inputNumber = Convert.ToInt16(inputParts.ElementAt(1));
+
+                                switch (inputType)
+                                {
+                                    case SimpleIpCommands.InputTypes.Hdmi:
+                                    {
+                                        _currentInput = inputNumber.ToString(CultureInfo.InvariantCulture);
+                                        break;
+                                    }
+                                    case SimpleIpCommands.InputTypes.Component:
+                                    {
+                                        var index = inputNumber + 9;
+                                        _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                        break;
+                                    }
+                                    case SimpleIpCommands.InputTypes.Composite:
+                                    {
+                                        var index = inputNumber + 6;
+                                        _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                        break;
+                                    }
+                                    default:
+                                    {
+                                        // unknown input type
+                                        break;
+                                    }
+                                }
+
+                                break;
+                            }
+                        default:
+                            {
+                                Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: unhanlded response '{0}' == '{1}'",
+                                    command, parameters);
+                                break;
+                            }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error,
+                        "ProcessSimpleIpResponse Exception: {0}", ex.Message);
+                    Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error,
+                        "ProcessSimpleIpResponse Exception Stack Trace: {0}", ex.StackTrace);
+                    if (ex.InnerException != null)
+                        Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error,
+                            "ProcessSimpleIpResponse Inner Exception: {0}", ex.InnerException);
+
+                    Debug.Console(DebugLevels.DebugLevel, this, seperator);
+                }
+            }
         }
     }
 }
