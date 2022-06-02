@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Crestron.SimplSharp;
 using PepperDash.Core;
 using PepperDash.Essentials.Core;
@@ -151,7 +150,7 @@ namespace SonyBraviaEpi
             {
                 CrestronConsole.ConsoleCommandResponse(ConsoleHelpMessageExtended);
                 return;
-            };
+            }
 
             var key = string.IsNullOrEmpty(data[0]) ? string.Empty : data[0];
             var param = string.IsNullOrEmpty(data[1]) ? string.Empty : data[1];            
