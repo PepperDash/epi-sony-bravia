@@ -7,7 +7,7 @@ namespace SonyBraviaEpi
     public class SimpleIpCommands
     {
         public static readonly string Header = "*S";
-        public static readonly byte Footer = 0x0A;
+        public static readonly string Footer = "\x0A";
 
         public enum MessageTypes
         {            
@@ -31,13 +31,13 @@ namespace SonyBraviaEpi
         public static IQueueMessage GetControlCommand(IBasicCommunication coms, string cmd, int value)
         {
             // *SCPOWR00000000000000010A
-            return new ComsMessage(coms, string.Format("{0}{1}{2}{3:D16}{4:X2}", Header, Convert.ToChar(MessageTypes.Control), cmd, value, Footer));
+            return new ComsMessage(coms, string.Format("{0}{1}{2}{3:D16}{4}", Header, Convert.ToChar(MessageTypes.Control), cmd, value, Footer));
         }
 
         public static IQueueMessage GetQueryCommand(IBasicCommunication coms, string cmd)
         {
             // *SEINPT################0A
-            return new ComsMessage(coms, string.Format("{0}{1}{2}{3}{4:X2}", Header, Convert.ToChar(MessageTypes.Query), cmd, new string('#', 16), Footer));
+            return new ComsMessage(coms, string.Format("{0}{1}{2}{3}{4}", Header, Convert.ToChar(MessageTypes.Query), cmd, new string('#', 16), Footer));
         }
         
         public static IQueueMessage GetInputCommand(IBasicCommunication coms, InputTypes inputType, int inputValue)
@@ -45,7 +45,7 @@ namespace SonyBraviaEpi
             // *SCINPT{0:D8}{D:8}0A
             // *SCINPT00000001000000010A
             var input = string.Format("{0:D8}{1:D8}", (int) inputType, inputValue);
-            return new ComsMessage(coms, string.Format("{0}{1}{2}{3}{4:X2}", Header, Convert.ToChar(MessageTypes.Control), "INPT", input, Footer));
+            return new ComsMessage(coms, string.Format("{0}{1}{2}{3}{4}", Header, Convert.ToChar(MessageTypes.Control), "INPT", input, Footer));
         }
     }
 }

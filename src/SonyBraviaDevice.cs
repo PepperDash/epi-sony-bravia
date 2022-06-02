@@ -77,7 +77,7 @@ namespace SonyBraviaEpi
             else
             {
                 _queueSimpleIp = new CrestronQueue<string>(50);
-                var comsGather = new CommunicationGather(_coms, "\n");
+                var comsGather = new CommunicationGather(_coms, '\x0A');
                 comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
 
                 _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
@@ -108,7 +108,12 @@ namespace SonyBraviaEpi
 
                     _pollTimer.Stop();
                     _pollTimer.Dispose();
-                    _queueRs232.Enqueue(null);
+
+                    if (_comsIsRs232)
+                        _queueRs232.Enqueue(null);
+                    else
+                        _queueSimpleIp.Enqueue(null);
+
                     worker.Join();
                 }
                 catch (Exception ex)
@@ -122,6 +127,8 @@ namespace SonyBraviaEpi
             {
                 try
                 {
+                    _coms.Connect();
+
                     CommunicationMonitor.Start();
                     _pollTimer.Reset(5000, 15000);
                 }
@@ -525,7 +532,10 @@ namespace SonyBraviaEpi
 
         private object ProcessResponseQueue(object _)
         {
-            return _comsIsRs232 ? ProcessRs232Response(_) : ProcessSimpleIpResponse(_);
+            if (_ != null) return _comsIsRs232 ? ProcessRs232Response(_) : ProcessSimpleIpResponse(_);
+            
+            Debug.Console(DebugLevels.ErrorLevel, this, "ProcessResponseQueue: object was null"); 
+            return null;
         }
 
         private object ProcessRs232Response(object _)
@@ -538,7 +548,11 @@ namespace SonyBraviaEpi
                 try
                 {
                     var bytes = _queueRs232.Dequeue();
-                    if (bytes == null) return null;
+                    if (bytes == null)
+                    {
+                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: _queueRs232.Dequeue failed, object was null"); 
+                        return null;
+                    }
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}')",
@@ -682,7 +696,14 @@ namespace SonyBraviaEpi
                 try
                 {
                     var response = _queueSimpleIp.Dequeue();
-                    if (response == null) return null;
+                    if (response == null)
+                    {
+                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
+                        return null;
+                    }
+
+                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: raw '{0}'", response);
 
                     // http://regexstorm.net/tester
                     // *([A,C,E,N])(?<command>POWR|INPT|VOLU|AMUT)(?<parameters>.[Ff]+|\d+)
@@ -696,19 +717,22 @@ namespace SonyBraviaEpi
 
                     if (!matches.Success)
                     {
-                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown resonse '{0}'", response);
+                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown response '{0}'", response);
                         return null;
                     }
 
                     var type = matches.Groups["types"].Value;
                     var command = matches.Groups["command"].Value;
                     var parameters = matches.Groups["parameters"].Value;
+                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
+                        type, command, parameters);
 
                     switch (command)
                     {
                         case "POWR":
                             {
                                 PowerIsOn = Convert.ToInt16(parameters) == 1;
+                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
                                 break;
                             }
                         case "INPUT":
@@ -718,41 +742,48 @@ namespace SonyBraviaEpi
                                 var inputType = (SimpleIpCommands.InputTypes)Convert.ToInt16(inputParts.ElementAt(0));
                                 var inputNumber = Convert.ToInt16(inputParts.ElementAt(1));
 
+                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
+                                    inputType, inputNumber);
+
                                 switch (inputType)
                                 {
                                     case SimpleIpCommands.InputTypes.Hdmi:
-                                    {
-                                        _currentInput = inputNumber.ToString(CultureInfo.InvariantCulture);
-                                        break;
-                                    }
+                                        {
+                                            _currentInput = inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            break;
+                                        }
                                     case SimpleIpCommands.InputTypes.Component:
-                                    {
-                                        var index = inputNumber + 9;
-                                        _currentInput = index.ToString(CultureInfo.InvariantCulture);
-                                        break;
-                                    }
+                                        {
+                                            var index = inputNumber + 9;
+                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            break;
+                                        }
                                     case SimpleIpCommands.InputTypes.Composite:
-                                    {
-                                        var index = inputNumber + 6;
-                                        _currentInput = index.ToString(CultureInfo.InvariantCulture);
-                                        break;
-                                    }
+                                        {
+                                            var index = inputNumber + 6;
+                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            break;
+                                        }
                                     default:
-                                    {
-                                        // unknown input type
-                                        break;
-                                    }
+                                        {
+                                            // unknown input type
+                                            break;
+                                        }
                                 }
+
+                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _currentInput == '{0}'", _currentInput);
 
                                 break;
                             }
                         default:
                             {
-                                Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: unhanlded response '{0}' == '{1}'",
+                                Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: unhandled response '{0}' == '{1}'",
                                     command, parameters);
                                 break;
                             }
                     }
+
+                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                 }
                 catch (Exception ex)
                 {
