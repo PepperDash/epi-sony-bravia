@@ -10,5 +10,6 @@ namespace SonyBraviaEpi
 
         public long? WarmingTimeMs { get; set; }
         public long? CoolingTimeMs { get; set; }
+        public bool ForceRs232 { get; set; }
     }
 }
