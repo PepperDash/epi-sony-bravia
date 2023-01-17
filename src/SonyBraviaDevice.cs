@@ -63,7 +63,7 @@ namespace SonyBraviaEpi
 
             _coms = comms;
             var socket = _coms as ISocketStatus;
-            _comsIsRs232 = socket == null;
+            _comsIsRs232 = socket == null || props.ForceRs232;
             if (_comsIsRs232)
             {
                 _queueRs232 = new CrestronQueue<byte[]>(50);
