@@ -19,6 +19,12 @@ namespace SonyBraviaEpi
                 return true;
             }
 
+            if (response[2] == 0x02)
+            {
+                power = response[3] != 0x00;
+                return true;
+            }
+
             power = false;
             return false;
         }
@@ -28,11 +34,11 @@ namespace SonyBraviaEpi
             // TODO [ ] actually add in parsing
             Debug.Console(DebugLevels.DebugLevel, "ParseInputResponse response: {0}", response.ToReadableString());
 
-            //if (response[2] == 0x02)
-            //{
-            //      input = "";
-            //      return true;
-            //}
+            if (response[2] == 0x02)
+            {
+                  input = "";
+                  //return true;
+            }
 
             input = "";
             return false;

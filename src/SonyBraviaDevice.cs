@@ -239,7 +239,13 @@ namespace SonyBraviaEpi
             if (commands == null)
                 return;
 
-            commands.ToList().ForEach(CommandQueue.Enqueue);
+            commands
+                .ToList()
+                .ForEach(command =>
+                                      {
+                                          CommandQueue.Enqueue(command);
+                                          Thread.Sleep(100);
+                                      });
         }
 
         /// <summary>
@@ -649,7 +655,7 @@ namespace SonyBraviaEpi
                         if (buffer.ParsePowerResponse(out powerResult))
                         {
                             PowerIsOn = powerResult;
-                            Debug.Console(DebugLevels.DebugLevel, "PowerIsOn: {0}", PowerIsOn.ToString());
+                            PowerIsOnFeedback.FireUpdate();
                         }
 
                         string input;
