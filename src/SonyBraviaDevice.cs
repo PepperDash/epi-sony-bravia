@@ -642,7 +642,7 @@ namespace SonyBraviaEpi
                         if (!isComplete)
                         {
                             Debug.Console(DebugLevels.DebugLevel, this, "Message is incomplete... spinning around");
-                            continue;
+                            break;
                         }
 
                         bool powerResult;
