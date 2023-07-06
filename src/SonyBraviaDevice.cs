@@ -239,7 +239,13 @@ namespace SonyBraviaEpi
             if (commands == null)
                 return;
 
-            commands.ToList().ForEach(CommandQueue.Enqueue);
+            commands
+                .ToList()
+                .ForEach(command =>
+                                      {
+                                          CommandQueue.Enqueue(command);
+                                          Thread.Sleep(100);
+                                      });
         }
 
         /// <summary>
@@ -574,8 +580,19 @@ namespace SonyBraviaEpi
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}')",
                         bytes.ToReadableString(), bytes.Length, buffer.ToReadableString(), buffer.Length);
 
-                    while (buffer.Length >= 3)
+                    const int safety = 10;
+                    var numberOfSpins = 0;
+                    while (buffer.Length >= 3 && numberOfSpins <= safety)
                     {
+                        ++numberOfSpins;
+                        if (numberOfSpins == safety)
+                            Debug.Console(0,
+                                          this,
+                                          Debug.ErrorLogLevel.Notice,
+                                          "We hit our safety limit, something is wrong... Buffer:{0}, Bytes:{1}",
+                                          buffer.ToReadableString(),
+                                          bytes.ToReadableString());
+
                         var message = buffer.GetFirstMessage();
                         Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: bytes-'{0}' (len-'{1}') | buffer-'{2}' (len-'{3}') | message-'{4}' (len-'{5}')",
                             bytes.ToReadableString(), bytes.Length,
@@ -642,14 +659,14 @@ namespace SonyBraviaEpi
                         if (!isComplete)
                         {
                             Debug.Console(DebugLevels.DebugLevel, this, "Message is incomplete... spinning around");
-                            continue;
+                            break;
                         }
 
                         bool powerResult;
                         if (buffer.ParsePowerResponse(out powerResult))
                         {
                             PowerIsOn = powerResult;
-                            Debug.Console(DebugLevels.DebugLevel, "PowerIsOn: {0}", PowerIsOn.ToString());
+                            PowerIsOnFeedback.FireUpdate();
                         }
 
                         string input;
