@@ -10,15 +10,20 @@ using PepperDash.Core;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.Config;
+using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Devices.Displays;
+using static Crestron.SimplSharpPro.DM.Audio;
 
 namespace SonyBraviaEpi
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
         IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
         IOnline
+#if SERIES4
+        , IHasInputs<string, string>
+#endif
     {
         private readonly IBasicCommunication _coms;
         private readonly bool _comsIsRs232;
@@ -95,6 +100,9 @@ namespace SonyBraviaEpi
                 PowerPoll);
 
             BuildInputRoutingPorts();
+
+            SetupInputs();
+
 
             var worker = _comsIsRs232
                 ? new Thread(ProcessRs232Response, null)
@@ -229,6 +237,8 @@ namespace SonyBraviaEpi
 
         public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
 
+        public ISelectableItems<string> Inputs { get; private set; }
+
         /// <summary>
         /// Poll device
         /// </summary>
@@ -242,10 +252,10 @@ namespace SonyBraviaEpi
             commands
                 .ToList()
                 .ForEach(command =>
-                                      {
-                                          CommandQueue.Enqueue(command);
-                                          Thread.Sleep(100);
-                                      });
+                {
+                    CommandQueue.Enqueue(command);
+                    Thread.Sleep(100);
+                });
         }
 
         /// <summary>
@@ -365,6 +375,78 @@ namespace SonyBraviaEpi
             AddInputRoutingPort(new RoutingInputPort(
                     "componentIn3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
                     new Action(InputComponent3), this), 12);
+        }
+
+        private void SetupInputs()
+        {
+#if SERIES4
+            Inputs = new SonyBraviaInputs
+            {
+                Items = new Dictionary<string, ISelectableItem>
+                {
+                    {
+                        "hdmi1", new SonyBraviaInput("Hdmi1", "HDMI 1", this,
+                            _comsIsRs232  ? Rs232Commands.GetHdmi1(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))},
+                    {
+
+                        "hdmi2", new SonyBraviaInput("hdmi2", "HDMI 2", this,
+                            _comsIsRs232 ? Rs232Commands.GetHdmi2(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
+                    },
+                    {
+                        "hdmi3", new SonyBraviaInput("hdmi3", "HDMI 3", this,
+                            _comsIsRs232 ? Rs232Commands.GetHdmi3(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
+                    },
+                    {
+                        "hdmi4", new SonyBraviaInput("hdmi4", "HDMI 4", this,
+                            _comsIsRs232 ? Rs232Commands.GetHdmi4(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
+                    },
+                    {
+                        "hdmi5", new SonyBraviaInput("hdmi5", "HDMI 5", this,
+                            _comsIsRs232 ? Rs232Commands.GetHdmi5(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
+                    },
+                    {
+                        "video1", new SonyBraviaInput("video1", "Video 1", this,
+                            _comsIsRs232 ? Rs232Commands.GetVideo1(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
+                    },
+                    {
+                        "video2", new SonyBraviaInput("video2", "Video 2", this,
+                            _comsIsRs232 ? Rs232Commands.GetVideo2(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
+                    },
+                    {
+                        "video3", new SonyBraviaInput("video3", "Video 3", this,
+                            _comsIsRs232 ? Rs232Commands.GetVideo3(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
+                    },
+                    {
+                        "component1", new SonyBraviaInput("component1", "Component 1", this,
+                            _comsIsRs232 ? Rs232Commands.GetComponent1(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
+                    },
+                    {
+                        "component2", new SonyBraviaInput("component2", "Component 2", this,
+                            _comsIsRs232 ? Rs232Commands.GetComponent2(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
+                    },
+                    {
+                        "component3", new SonyBraviaInput("component3", "Component 3", this,
+                            _comsIsRs232 ? Rs232Commands.GetComponent3(_coms)
+                            : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
+                    },
+                    {
+                        "vga1", new SonyBraviaInput("vga1", "VGA 1", this,
+                            _comsIsRs232 ? Rs232Commands.GetComponent1(_coms)
+                        : null)
+                    }
+                }
+            };
+#endif
         }
 
         /// <summary>
@@ -674,7 +756,21 @@ namespace SonyBraviaEpi
                         {
                             _currentInput = input;
                             CurrentInputFeedback.FireUpdate();
+
+#if SERIES4
+                            if (Inputs.Items.ContainsKey(input))
+                            {
+                                foreach (var item in Inputs.Items)
+                                {
+                                    item.Value.IsSelected = item.Key.Equals(input);
+                                }
+                            }
+
+                            Inputs.CurrentItem = input;
+#endif
                         }
+
+
 
                         buffer = buffer.NumberOfHeaders() > 1 ? buffer.CleanOutFirstMessage() : new byte[0];
 
@@ -785,6 +881,19 @@ namespace SonyBraviaEpi
                                         }
                                 }
 
+
+#if SERIES4
+                                // No idea if this will work with _currentInput.  It's not clear how the input is determined for IP communication
+                                if (Inputs.Items.ContainsKey(_currentInput))
+                                {
+                                    foreach (var item in Inputs.Items)
+                                    {
+                                        item.Value.IsSelected = item.Key.Equals(_currentInput);
+                                    }
+                                }
+
+                                Inputs.CurrentItem = _currentInput;
+#endif
                                 Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _currentInput == '{0}'", _currentInput);
 
                                 break;
@@ -813,5 +922,22 @@ namespace SonyBraviaEpi
                 }
             }
         }
+
+        public void EnqueueCommand(IQueueMessage command)
+        {
+            CommandQueue.Enqueue(command);
+        }
+
+#if SERIES4
+        public void SetInput(string selector)
+        {
+            var input = Inputs.Items[selector];
+
+            if (input != null)
+            {
+                input.Select();
+            }
+        }
+#endif
     }
 }

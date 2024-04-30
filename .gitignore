@@ -11,6 +11,10 @@
 *.sln.docstates
 *.projectinfo
 
+[Oo]utput/
+*._
+*.cplz
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -353,3 +357,5 @@ MigrationBackup/
 .ionide/
 *.projectinfo
 *.projectinfo~Stashed changes
+/output/epi-sony-bravia.4Series.1.0.0-local.cplz
+/._.gitignore
