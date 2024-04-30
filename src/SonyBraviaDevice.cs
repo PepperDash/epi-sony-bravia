@@ -14,7 +14,6 @@ using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Devices.Displays;
-using static Crestron.SimplSharpPro.DM.Audio;
 
 namespace SonyBraviaEpi
 {
@@ -237,7 +236,9 @@ namespace SonyBraviaEpi
 
         public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
 
+#if SERIES4
         public ISelectableItems<string> Inputs { get; private set; }
+#endif
 
         /// <summary>
         /// Poll device
