@@ -8,8 +8,7 @@ namespace SonyBraviaEpi
     public static class Rs232Commands
     {
         public static readonly byte[] PowerOn = {0x8c, 0x00, 0x00, 0x02, 0x01};
-        public static readonly byte[] PowerOff = {0x8c, 0x00, 0x00, 0x02, 0x00};
-        public static readonly byte[] PowerQuery = {0x83, 0x00, 0x00, 0xFF, 0xFF};
+        public static readonly byte[] PowerOff = {0x8c, 0x00, 0x00, 0x02, 0x00};        
         public static readonly byte[] InputVideo1 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x01};
         public static readonly byte[] InputVideo2 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x02};
         public static readonly byte[] InputVideo3 = {0x8C, 0x00, 0x02, 0x03, 0x02, 0x03};
@@ -21,8 +20,12 @@ namespace SonyBraviaEpi
         public static readonly byte[] InputHdmi3 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x03};
         public static readonly byte[] InputHdmi4 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x04};
         public static readonly byte[] InputHdmi5 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x05};
-        public static readonly byte[] InputPc1 = {0x8C, 0x00, 0x02, 0x03, 0x05, 0x01};
-        public static readonly byte[] InputQuery = {0x83, 0x00, 0x02, 0xFF, 0xFF};
+        public static readonly byte[] InputPc1 = {0x8C, 0x00, 0x02, 0x03, 0x05, 0x01};        
+
+        public static readonly byte[] PowerQuery = { 0x83, 0x00, 0x00, 0xFF, 0xFF };
+        public static readonly byte[] InputQuery = { 0x83, 0x00, 0x02, 0xFF, 0xFF };
+        public static readonly byte[] VolumeQuery = { 0x83, 0x00, 0x05, 0xFF, 0xFF };
+        public static readonly byte[] MuteQuery = { 0x83, 0x00, 0x06, 0xFF, 0xFF };
 
         public static byte CalculateChecksum(this byte[] data)
         {
@@ -41,84 +44,94 @@ namespace SonyBraviaEpi
             return newArray.ToArray();
         }
 
-        public static IQueueMessage GetPowerOn(IBasicCommunication coms)
+        public static IQueueMessage GetVolumeQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, PowerOn.WithChecksum());
+            return new Rs232Command(coms, VolumeQuery.WithChecksum(), action, eCommandType.VolumeQuery);
         }
 
-        public static IQueueMessage GetPowerOff(IBasicCommunication coms)
+        public static IQueueMessage GetMuteQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, PowerOff.WithChecksum());
+            return new Rs232Command(coms, MuteQuery.WithChecksum(), action, eCommandType.MuteQuery);
         }
 
-        public static IQueueMessage GetPowerQuery(IBasicCommunication coms)
+        public static IQueueMessage GetPowerOn(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, PowerQuery.WithChecksum());
+            return new Rs232Command(coms, PowerOn.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetHdmi1(IBasicCommunication coms)
+        public static IQueueMessage GetPowerOff(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputHdmi1.WithChecksum());
+            return new Rs232Command(coms, PowerOff.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetHdmi2(IBasicCommunication coms)
+        public static IQueueMessage GetPowerQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputHdmi2.WithChecksum());
+            return new Rs232Command(coms, PowerQuery.WithChecksum(), action, eCommandType.PowerQuery);
         }
 
-        public static IQueueMessage GetHdmi3(IBasicCommunication coms)
+        public static IQueueMessage GetHdmi1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputHdmi3.WithChecksum());
+            return new Rs232Command(coms, InputHdmi1.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetHdmi4(IBasicCommunication coms)
+        public static IQueueMessage GetHdmi2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputHdmi4.WithChecksum());
+            return new Rs232Command(coms, InputHdmi2.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetHdmi5(IBasicCommunication coms)
+        public static IQueueMessage GetHdmi3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputHdmi5.WithChecksum());
+            return new Rs232Command(coms, InputHdmi3.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetVideo1(IBasicCommunication coms)
+        public static IQueueMessage GetHdmi4(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputVideo1.WithChecksum());
+            return new Rs232Command(coms, InputHdmi4.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetVideo2(IBasicCommunication coms)
+        public static IQueueMessage GetHdmi5(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputVideo2.WithChecksum());
+            return new Rs232Command(coms, InputHdmi5.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetVideo3(IBasicCommunication coms)
+        public static IQueueMessage GetVideo1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputVideo3.WithChecksum());
+            return new Rs232Command(coms, InputVideo1.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetComponent1(IBasicCommunication coms)
+        public static IQueueMessage GetVideo2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputComponent1.WithChecksum());
+            return new Rs232Command(coms, InputVideo2.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetComponent2(IBasicCommunication coms)
+        public static IQueueMessage GetVideo3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputComponent2.WithChecksum());
+            return new Rs232Command(coms, InputVideo3.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetComponent3(IBasicCommunication coms)
+        public static IQueueMessage GetComponent1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputComponent3.WithChecksum());
+            return new Rs232Command(coms, InputComponent1.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetPc(IBasicCommunication coms)
+        public static IQueueMessage GetComponent2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputPc1.WithChecksum());
+            return new Rs232Command(coms, InputComponent2.WithChecksum(), action, eCommandType.Command);
         }
 
-        public static IQueueMessage GetInputQuery(IBasicCommunication coms)
+        public static IQueueMessage GetComponent3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new ComsMessage(coms, InputQuery.WithChecksum());
+            return new Rs232Command(coms, InputComponent3.WithChecksum(), action, eCommandType.Command);
+        }
+
+        public static IQueueMessage GetPc(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, InputPc1.WithChecksum(), action, eCommandType.Command);
+        }
+
+        public static IQueueMessage GetInputQuery(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, InputQuery.WithChecksum(), action, eCommandType.InputQuery);
         }
         /*const commands = {
   "power_on":                        [0x8C, 0x00, 0x00, 0x02, 0x01],
@@ -248,5 +261,72 @@ namespace SonyBraviaEpi
   "signage_productinfo2":            [0x83, 0x00, 0x6D, 0xFF, 0xFF],
   "signage_productinfo3":            [0x83, 0x00, 0x6C, 0xFF, 0xFF]
 }*/
+    }
+
+    public class Rs232Command:IQueueMessage
+    {
+        private readonly Action<eCommandType> _action;
+
+        private readonly byte[] _message;       
+
+        private readonly IBasicCommunication _comm;
+
+        private readonly eCommandType _commandType;
+
+        public Rs232Command(IBasicCommunication coms, byte[] message, Action<eCommandType> updateCommandAction, eCommandType commandType)
+        {
+            if(coms == null)
+            {
+#if SERIES4
+                throw new ArgumentNullException(nameof(coms));
+#else
+                throw new ArgumentNullException("coms");
+#endif
+            }
+
+            if (message == null)
+            {
+#if SERIES4
+                throw new ArgumentNullException(nameof(message));
+#else
+                throw new ArgumentNullException("message");
+#endif
+            }
+
+            if (updateCommandAction == null)
+            {
+#if SERIES4
+                throw new ArgumentNullException(nameof(updateCommandAction));
+#else
+                throw new ArgumentNullException("updateCommandAction");
+#endif
+            }
+
+            _action = updateCommandAction;
+            _message = message;
+            _comm = coms;
+            _commandType = commandType;
+        }
+
+        public void Dispatch()
+        {
+            _action(_commandType);
+
+            _comm.SendBytes(_message);
+        }
+
+        public override string ToString()
+        {
+            return _message.ToString();
+        }
+    }
+
+    public enum eCommandType
+    {
+        Command,
+        PowerQuery,
+        InputQuery,
+        VolumeQuery,
+        MuteQuery
     }
 }
