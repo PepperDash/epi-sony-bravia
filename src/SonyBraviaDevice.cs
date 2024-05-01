@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Crestron.SimplSharp;
+using Crestron.SimplSharpPro.CrestronConnected;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core;
@@ -21,7 +22,8 @@ namespace SonyBraviaEpi
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
         IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
-        IOnline
+        IOnline,
+        IBasicVolumeWithFeedback
 #if SERIES4
         , IHasInputs<string, string>
 #endif
@@ -124,6 +126,9 @@ namespace SonyBraviaEpi
                 : new Thread(ProcessSimpleIpResponse, null);
 
             _pollTimer = new CTimer((o) => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery }),Timeout.Infinite);
+
+            MuteFeedback = new BoolFeedback(() => _muted);
+            VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, 255, 0, 65535, 0));
 
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
@@ -262,6 +267,13 @@ namespace SonyBraviaEpi
 #if SERIES4
         public ISelectableItems<string> Inputs { get; private set; }
 #endif
+        private bool _muted;
+
+        private int _rawVolume;
+
+        public BoolFeedback MuteFeedback { get; private set; }
+
+        public IntFeedback VolumeLevelFeedback { get; private set; }
 
         /// <summary>
         /// Poll device
@@ -939,5 +951,53 @@ namespace SonyBraviaEpi
             }
         }
 #endif
+        public void MuteOn()
+        {
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetMuteOn(_coms, UpdateLastSentCommandType)
+                : null);
+        }
+
+        public void MuteOff()
+        {
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetMuteOff(_coms, UpdateLastSentCommandType)
+                : null);
+        }
+        public void MuteToggle()
+        {
+            if (_muted)
+            {
+                MuteOff();
+                return;
+            }
+
+            MuteOn();
+        }
+
+        public void SetVolume(ushort level)
+        {
+            var scaledVolume = CrestronEnvironment.ScaleWithLimits(level, 65535, 0, 255, 0);
+
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVolumeDirect(_coms, UpdateLastSentCommandType, scaledVolume)
+                : null);
+        }
+
+        public void VolumeUp(bool pressRelease)
+        {
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVolumeUp(_coms, UpdateLastSentCommandType)
+                : null);
+        }
+
+        public void VolumeDown(bool pressRelease)
+        {
+            CommandQueue.Enqueue(_comsIsRs232
+                ? Rs232Commands.GetVolumeDown(_coms, UpdateLastSentCommandType)
+                : null);
+        }
+
+
     }
 }

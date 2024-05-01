@@ -20,7 +20,14 @@ namespace SonyBraviaEpi
         public static readonly byte[] InputHdmi3 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x03};
         public static readonly byte[] InputHdmi4 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x04};
         public static readonly byte[] InputHdmi5 = {0x8C, 0x00, 0x02, 0x03, 0x04, 0x05};
-        public static readonly byte[] InputPc1 = {0x8C, 0x00, 0x02, 0x03, 0x05, 0x01};        
+        public static readonly byte[] InputPc1 = {0x8C, 0x00, 0x02, 0x03, 0x05, 0x01};
+
+        public static readonly byte[] VolumeUp = { 0x8C, 0x00, 0x05, 0x03, 0x00, 0x00 };
+        public static readonly byte[] VolumeDown = { 0x8C, 0x00, 0x05, 0x03, 0x00, 0x01 };
+        public static readonly byte[] VolumeDirect = { 0x83, 0x00, 0x05, 0x03, 0x01, 0x00 }; //reset byte[5] to actual volume level
+
+        public static readonly byte[] MuteOn = { 0x8C, 0x00, 0x06, 0x03, 0x01, 0x01};
+        public static readonly byte[] MuteOff = { 0x8C, 0x00, 0x06, 0x03, 0x01, 0x00 };
 
         public static readonly byte[] PowerQuery = { 0x83, 0x00, 0x00, 0xFF, 0xFF };
         public static readonly byte[] InputQuery = { 0x83, 0x00, 0x02, 0xFF, 0xFF };
@@ -49,9 +56,50 @@ namespace SonyBraviaEpi
             return new Rs232Command(coms, VolumeQuery.WithChecksum(), action, eCommandType.VolumeQuery);
         }
 
+        public static IQueueMessage GetVolumeUp(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, VolumeUp.WithChecksum(), action, eCommandType.Command);
+        }
+
+        public static IQueueMessage GetVolumeDown(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, VolumeDown.WithChecksum(), action, eCommandType.Command);
+        }
+
+        public static IQueueMessage GetVolumeDirect(IBasicCommunication coms, Action<eCommandType> action, int volume)
+        {
+            if(volume < 0 )
+            {
+                VolumeDirect[5] = 0x00;
+
+                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+            }
+
+            if (volume > 255)
+            {
+                VolumeDirect[5] = 0xFF;
+
+                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+            }
+
+            VolumeDirect[5] = (byte) volume;
+
+            return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+        }
+
         public static IQueueMessage GetMuteQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
             return new Rs232Command(coms, MuteQuery.WithChecksum(), action, eCommandType.MuteQuery);
+        }
+
+        public static IQueueMessage GetMuteOn(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, MuteOn.WithChecksum(), action, eCommandType.Command);
+        }
+
+        public static IQueueMessage GetMuteOff(IBasicCommunication coms, Action<eCommandType> action)
+        {
+            return new Rs232Command(coms, MuteOff.WithChecksum(), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetPowerOn(IBasicCommunication coms, Action<eCommandType> action)
