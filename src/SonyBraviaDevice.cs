@@ -760,12 +760,15 @@ namespace SonyBraviaEpi
                                 }
                             case eCommandType.VolumeQuery:
                                 {
-                                    var volume = buffer.ParseVolumeResponse();
+                                    _rawVolume = buffer.ParseVolumeResponse();
+
+                                    VolumeLevelFeedback.FireUpdate();
                                     break;
                                 }
                             case eCommandType.MuteQuery:
                                 {
-                                    var mute = buffer.ParseMuteResponse();
+                                    _muted = buffer.ParseMuteResponse();
+                                    MuteFeedback.FireUpdate();
                                     break;
                                 }                                
                         }
