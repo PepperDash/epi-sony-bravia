@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Crestron.SimplSharp;
-using Crestron.SimplSharpPro.CrestronConnected;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core;
@@ -15,8 +14,6 @@ using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Devices.Displays;
-using static Crestron.SimplSharpPro.DM.Audio;
-using static Crestron.SimplSharpPro.Media.AutonomicMms;
 
 namespace SonyBraviaEpi
 {
