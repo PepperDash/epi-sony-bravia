@@ -47,7 +47,7 @@ namespace SonyBraviaEpi
             Debug.Console(DebugLevels.DebugLevel, "ParseInputResponse response: {0}", response.ToReadableString());
 
             //add together the input type byte & the input number byte
-            var inputNumber = response[3] + response[4];
+            var inputNumber = response[3] << 8 | response[4];
 
             string input;
 
