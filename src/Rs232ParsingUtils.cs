@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using PepperDash.Core;
 
@@ -6,42 +7,81 @@ namespace SonyBraviaEpi
 {
     public static class Rs232ParsingUtils
     {
+        private static Dictionary<int, string> _inputMap = new Dictionary<int, string>
+        {
+            {0x0201,"video1" },
+            {0x0202,"video2" },
+            {0x0203,"video3" },
+            {0x0301, "component1" },
+            {0x0302,"component2" },
+            {0x0303,"component3" },
+            {0x0401,"hdmi1" },
+            {0x0402,"hdmi2" },
+            {0x0403,"hdmi3" },
+            {0x0404,"hdmi4" },
+            {0x0405,"hdmi5" },
+            {0x0501,"vga1" }            
+        };
         private const byte Header = 0x70;
 
-        public static bool ParsePowerResponse(this byte[] response, out bool power)
-        {
-            // TODO [ ] actually add in parsing
+        public static bool ParsePowerResponse(this byte[] response)
+        {            
             Debug.Console(DebugLevels.DebugLevel, "ParsePowerResponse response: {0}", response.ToReadableString());
 
             if (response[2] == 0x00)
             {
-                power = response[3] == 0x01;
-                return true;
+                return response[3] == 0x01;                
             }
 
             if (response[2] == 0x02)
             {
-                power = response[3] != 0x00;
-                return true;
+                return response[3] != 0x00;                
             }
 
-            power = false;
             return false;
         }
 
-        public static bool ParseInputResponse(this byte[] response, out string input)
+        public static string ParseInputResponse(this byte[] response)
         {
             // TODO [ ] actually add in parsing
             Debug.Console(DebugLevels.DebugLevel, "ParseInputResponse response: {0}", response.ToReadableString());
 
-            if (response[2] == 0x02)
+            //add together the input type byte & the input number byte
+            var inputNumber = response[3] << 8 | response[4];
+
+            string input;
+
+            if(_inputMap.TryGetValue(inputNumber,out input))
             {
-                  input = "";
-                  //return true;
+                Debug.Console(DebugLevels.DebugLevel, "Got input {0}", input);
+                return input;
             }
 
-            input = "";
-            return false;
+            return input;
+        }
+
+        public static int ParseVolumeResponse(this byte[] response)
+        {
+            //not a direct volume response
+            if (response[3] != 0x01)
+            {
+                return 0;
+            }
+
+            return response[4];
+        }
+
+        /// <summary>
+        /// True = isMuted
+        /// </summary>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        public static bool ParseMuteResponse(this byte[] response)
+        {
+            //not a direct mute response
+            if (response[3] != 0x01) { return false; }
+
+            return response[4] == 0x01;
         }
 
         public static bool IsComplete(this byte[] message)

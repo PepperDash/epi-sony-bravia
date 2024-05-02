@@ -5,7 +5,7 @@ namespace SonyBraviaEpi
 {
     public static class SimpleIpParsingUtils
     {
-        public static IEnumerable<string> SplitInParts(this String s, Int32 partLength)
+        public static IEnumerable<string> SplitInParts(this string s, int partLength)
         {
             if ((s == null) || (partLength <= 0)) yield break;
             for (var i = 0; i < s.Length; i += partLength)
