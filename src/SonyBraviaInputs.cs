@@ -1,4 +1,5 @@
 ﻿
+using PepperDash.Core;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using SonyBraviaEpi;
@@ -60,8 +61,11 @@ namespace SonyBraviaEpi
     {
         private bool _isSelected;
 
+        private readonly byte[] _command;
+        private readonly IBasicCommunication _coms;
+
         private readonly IQueueMessage _inputCommand;
-        private readonly SonyBraviaDevice _parent;
+        private readonly SonyBraviaDevice _parent;        
 
         public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, IQueueMessage inputCommand)
         {
@@ -69,6 +73,14 @@ namespace SonyBraviaEpi
             Name = name;
             _parent = parent;
             _inputCommand = inputCommand;
+        }
+
+        public SonyBraviaInput(string key, string name, IBasicCommunication coms, byte[] command)
+        {
+            Key = key;
+            Name = name;
+            _coms = coms;
+            _command = command;
         }
 
         public string Key { get; private set; }
@@ -93,6 +105,12 @@ namespace SonyBraviaEpi
 
         public void Select()
         {
+            if(_coms !=  null && _command != null)
+            {
+                _coms.SendBytes(_command);
+                return;
+            }
+
             _parent.EnqueueCommand(_inputCommand);
         }
     }

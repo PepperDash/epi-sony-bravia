@@ -311,6 +311,29 @@ namespace SonyBraviaEpi
 }*/
     }
 
+    public class Rs232Response : IQueueMessage
+    {
+        private readonly Action<byte[]> action;
+        private readonly byte[] _message;
+        
+        public Rs232Response(byte[] message, Action<byte[]> action)
+        {
+            _message = message;
+
+            this.action = action;
+        }
+
+        public void Dispatch()
+        {
+            if(action == null || _message.Length == 0)
+            {
+                return;
+            }
+
+            action(_message);
+        }
+    }
+
     public class Rs232Command:IQueueMessage
     {
         private readonly Action<eCommandType> _action;
@@ -320,6 +343,8 @@ namespace SonyBraviaEpi
         private readonly IBasicCommunication _comm;
 
         private readonly eCommandType _commandType;
+
+        public eCommandType CommandType => _commandType;
 
         public Rs232Command(IBasicCommunication coms, byte[] message, Action<eCommandType> updateCommandAction, eCommandType commandType)
         {
@@ -360,6 +385,7 @@ namespace SonyBraviaEpi
         {
             _action(_commandType);
 
+            Debug.Console(DebugLevels.DebugLevel, "Sending command {0}", _message.ToReadableString());
             _comm.SendBytes(_message);
         }
 
