@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Text;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -26,8 +27,10 @@ namespace SonyBraviaEpi
         , IHasInputs<string, string>
 #endif
     {
+        private const long pollTime = 2000;
         private readonly IBasicCommunication _coms;
         private readonly bool _comsIsRs232;
+        public bool ComsIsRs232 { get { return _comsIsRs232; } }
         public static GenericQueue CommandQueue;
 
         public static readonly CommunicationMonitorConfig DefaultMonitorConfig = new CommunicationMonitorConfig
@@ -38,6 +41,8 @@ namespace SonyBraviaEpi
         };
 
         private readonly CTimer _pollTimer;
+        private CTimer _volumeTimer;
+        private int _volumeCounter;
         private readonly IQueueMessage _powerOffCommand;
         private readonly IQueueMessage _powerOnCommand;        
 
@@ -53,6 +58,7 @@ namespace SonyBraviaEpi
         private readonly long _warmingtimeMs;
 
         private int pollIndex = 0;
+        private List<string> _activeInputs;
 
         private Dictionary<byte, string> _ackStringFormats = new Dictionary<byte, string> {
             {0x00, "Control complete ({0})"},
@@ -60,7 +66,11 @@ namespace SonyBraviaEpi
             {0x02, "Abnormal End: under minimum value ({0})" },
             {0x03, "Abnormal End: command cancelled ({0})"},
             {0x04, "Abnormal End: parse error/data format error ({0})" }
-        };      
+        };
+
+        private byte maxVolumeLevel = 0xFF;
+        private Dictionary<string, ISelectableItem> _defaultInputs;
+
     
     /// <summary>
     /// Constructor
@@ -80,7 +90,7 @@ namespace SonyBraviaEpi
             IQueueMessage inputQuery;
             IQueueMessage volumeQuery;
             IQueueMessage muteQuery;
-
+            
             _coms = comms;
             var socket = _coms as ISocketStatus;
             _comsIsRs232 = socket == null || props.ForceRs232;
@@ -90,18 +100,19 @@ namespace SonyBraviaEpi
 
                 _coms.BytesReceived += (sender, args) => {
                     Debug.Console(DebugLevels.DebugLevel, this, "received response: {0}", ComTextHelper.GetEscapedText(args.Bytes));
+
                     _queueRs232.Enqueue(new Rs232Response(args.Bytes, ProcessRs232Response));
                 };
 
                 //_coms.BytesReceived += (sender, args) => ProcessRs232Response(args.Bytes);
 
 
-                _powerOnCommand = Rs232Commands.GetPowerOn(_coms, UpdateLastSentCommandType);
-                _powerOffCommand = Rs232Commands.GetPowerOff(_coms, UpdateLastSentCommandType);
-                powerQuery = Rs232Commands.GetPowerQuery(_coms, UpdateLastSentCommandType);
-                inputQuery = Rs232Commands.GetInputQuery(_coms, UpdateLastSentCommandType);
-                volumeQuery = Rs232Commands.GetVolumeQuery(_coms, UpdateLastSentCommandType);
-                muteQuery = Rs232Commands.GetMuteQuery(_coms, UpdateLastSentCommandType);
+                _powerOnCommand = Rs232Commands.GetPowerOn(_coms, (c) => { });
+                _powerOffCommand = Rs232Commands.GetPowerOff(_coms, (c) => { });
+                powerQuery = Rs232Commands.GetPowerQuery(_coms, (c) => { });
+                inputQuery = Rs232Commands.GetInputQuery(_coms, (c) => { });
+                volumeQuery = Rs232Commands.GetVolumeQuery(_coms, (c) => { });
+                muteQuery = Rs232Commands.GetMuteQuery(_coms, (c) => { });                
             }
             else
             {
@@ -127,6 +138,74 @@ namespace SonyBraviaEpi
 
             BuildInputRoutingPorts();
 
+            _activeInputs = props.ActiveInputs;
+
+            var empty = new byte[] { };
+
+            _defaultInputs = new Dictionary<string, ISelectableItem>
+                {
+                    {
+                        "hdmi1", _comsIsRs232
+                            ? new SonyBraviaInput("Hdmi1", "HDMI 1", this, Rs232Commands.InputHdmi1.WithChecksum())
+                            : new SonyBraviaInput("Hdmi1", "HDMI 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))
+                    },
+                    {
+
+                        "hdmi2", _comsIsRs232
+                            ? new SonyBraviaInput("Hdmi2", "HDMI 2", this, Rs232Commands.InputHdmi2.WithChecksum())
+                            : new SonyBraviaInput("Hdmi2", "HDMI 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
+                    },
+                    {
+                        "hdmi3", _comsIsRs232
+                            ? new SonyBraviaInput("Hdmi3", "HDMI 3", this, Rs232Commands.InputHdmi3.WithChecksum())
+                            : new SonyBraviaInput("Hdmi3", "HDMI 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
+                    },
+                    {
+                        "hdmi4", _comsIsRs232
+                            ? new SonyBraviaInput("Hdmi4", "HDMI 4", this, Rs232Commands.InputHdmi4.WithChecksum())
+                            : new SonyBraviaInput("Hdmi4", "HDMI 4", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
+                    },
+                    {
+                        "hdmi5", _comsIsRs232
+                            ? new SonyBraviaInput("Hdmi5", "HDMI 5", this, Rs232Commands.InputHdmi5.WithChecksum())
+                            : new SonyBraviaInput("Hdmi5", "HDMI 5", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
+                    },
+                    {
+                        "video1",_comsIsRs232
+                            ? new SonyBraviaInput("video1", "Video 1", this, Rs232Commands.InputVideo1.WithChecksum())
+                            : new SonyBraviaInput("video1", "Video 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
+                    },
+                    {
+                        "video2",_comsIsRs232
+                            ? new SonyBraviaInput("video2", "Video 2", this, Rs232Commands.InputVideo2.WithChecksum())
+                            : new SonyBraviaInput("video2", "Video 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
+                    },
+                    {
+                        "video3", _comsIsRs232
+                            ? new SonyBraviaInput("video3", "Video 3", this, Rs232Commands.InputVideo3.WithChecksum())
+                            : new SonyBraviaInput("video3", "Video 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
+                    },
+                    {
+                        "component1", _comsIsRs232
+                            ?  new SonyBraviaInput("component1", "Component 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                            : new SonyBraviaInput("component1", "Component 1", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
+                    },
+                    {
+                        "component2", _comsIsRs232
+                            ?  new SonyBraviaInput("component2", "Component 2", this, Rs232Commands.InputComponent2.WithChecksum())
+                            : new SonyBraviaInput("component2", "Component 2", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
+                    },
+                    {
+                        "component3", _comsIsRs232
+                            ?  new SonyBraviaInput("component3", "Component 3", this, Rs232Commands.InputComponent3.WithChecksum())
+                            : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
+                    },
+                    {
+                        "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                        : new SonyBraviaInput("vga1", "VGA 1", this, empty)
+                        }
+                };
+
             SetupInputs();
 
 
@@ -138,8 +217,10 @@ namespace SonyBraviaEpi
                 ? new CTimer((o) => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum()}),Timeout.Infinite) 
                 : new CTimer((o) => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery }),Timeout.Infinite);
 
+            maxVolumeLevel = props.MaxVolumeLevel;
+
             MuteFeedback = new BoolFeedback(() => _muted);
-            VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, 255, 0, 65535, 0));
+            VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume,maxVolumeLevel, 0, 65535, 0));
 
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
@@ -167,7 +248,7 @@ namespace SonyBraviaEpi
             {
                 _coms.Connect();
                 CommunicationMonitor.Start();
-                _pollTimer.Reset(0, 1000);
+                _pollTimer.Reset(0, pollTime);
             }
             catch (Exception ex)
             {
@@ -193,15 +274,8 @@ namespace SonyBraviaEpi
             pollIndex += 1;            
         }
 
-        private byte[] _lastCommand;
-
-        private eCommandType _lastCommandType;
-
-        private void UpdateLastSentCommandType(eCommandType commandType)
-        {
-            Debug.Console(DebugLevels.TraceLevel, this, "Setting last command type to {0}", commandType);
-            _lastCommandType = commandType;
-        }
+        private byte[] _lastCommand;        
+        public byte[] LastCommand { set { _lastCommand = value; } }
 
         /// <summary>
         /// Device power is on
@@ -211,6 +285,11 @@ namespace SonyBraviaEpi
             get { return _powerIsOn; }
             set
             {
+                if(_powerIsOn == value)
+                {
+                    return;
+                }
+
                 _powerIsOn = value;
                 if (_powerIsOn)
                 {
@@ -327,10 +406,11 @@ namespace SonyBraviaEpi
                 var command = Rs232Commands.PowerOn.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
+                _pollTimer.Reset(1000, pollTime);
                 return;
             }
             CommandQueue.Enqueue(_powerOnCommand);
-            _pollTimer.Reset(1000, 1000);
+            _pollTimer.Reset(1000, pollTime);
         }
 
         /// <summary>
@@ -343,10 +423,11 @@ namespace SonyBraviaEpi
                 var command = Rs232Commands.PowerOff.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
+                _pollTimer.Reset(1000, pollTime);
                 return;
             }
             CommandQueue.Enqueue(_powerOffCommand);
-            _pollTimer.Reset(1000, 15000);
+            _pollTimer.Reset(1000, pollTime);
         }
 
         /// <summary>
@@ -369,9 +450,16 @@ namespace SonyBraviaEpi
         /// </summary>
         public void PowerPoll()
         {
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetPowerQuery(_coms, UpdateLastSentCommandType)
-                : SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PowerQuery.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+                _pollTimer.Reset(1000, pollTime);
+                return;
+            }
+            CommandQueue.Enqueue(SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+            _pollTimer.Reset(1000, pollTime);
         }
 
         /// <summary>
@@ -455,69 +543,10 @@ namespace SonyBraviaEpi
 #if SERIES4
             Inputs = new SonyBraviaInputs
             {
-                Items = new Dictionary<string, ISelectableItem>
-                {
-                    {
-                        "hdmi1", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi1", "HDMI 1", _coms, Rs232Commands.InputHdmi1.WithChecksum())
-                            : new SonyBraviaInput("Hdmi1", "HDMI 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))
-                    },
-                    {
-
-                        "hdmi2", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi2", "HDMI 2", _coms, Rs232Commands.InputHdmi2.WithChecksum())
-                            : new SonyBraviaInput("Hdmi2", "HDMI 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
-                    },
-                    {
-                        "hdmi3", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi3", "HDMI 3", _coms, Rs232Commands.InputHdmi3.WithChecksum())
-                            : new SonyBraviaInput("Hdmi3", "HDMI 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
-                    },
-                    {
-                        "hdmi4", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi4", "HDMI 4", _coms, Rs232Commands.InputHdmi4.WithChecksum())
-                            : new SonyBraviaInput("Hdmi4", "HDMI 4", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
-                    },
-                    {
-                        "hdmi5", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi5", "HDMI 5", _coms, Rs232Commands.InputHdmi5.WithChecksum())
-                            : new SonyBraviaInput("Hdmi5", "HDMI 5", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
-                    },
-                    {
-                        "video1",_comsIsRs232 
-                            ? new SonyBraviaInput("video1", "Video 1", _coms, Rs232Commands.InputVideo1.WithChecksum())
-                            : new SonyBraviaInput("video1", "Video 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
-                    },
-                    {
-                        "video2",_comsIsRs232
-                            ? new SonyBraviaInput("video2", "Video 2", _coms, Rs232Commands.InputVideo2.WithChecksum())
-                            : new SonyBraviaInput("video2", "Video 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
-                    },
-                    {
-                        "video3", _comsIsRs232
-                            ? new SonyBraviaInput("video3", "Video 3", _coms, Rs232Commands.InputVideo3.WithChecksum())
-                            : new SonyBraviaInput("video3", "Video 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
-                    },
-                    {
-                        "component1", _comsIsRs232
-                            ?  new SonyBraviaInput("component1", "Component 1", _coms, Rs232Commands.InputComponent1.WithChecksum())
-                            : new SonyBraviaInput("component1", "Component 1", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
-                    },
-                    {
-                        "component2", _comsIsRs232
-                            ?  new SonyBraviaInput("component2", "Component 2", _coms, Rs232Commands.InputComponent2.WithChecksum())
-                            : new SonyBraviaInput("component2", "Component 2", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
-                    },
-                    {
-                        "component3", _comsIsRs232
-                            ?  new SonyBraviaInput("component3", "Component 3", _coms, Rs232Commands.InputComponent3.WithChecksum())
-                            : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
-                    },
-                    {
-                        "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", _coms, Rs232Commands.InputComponent1.WithChecksum())
-                        : new SonyBraviaInput("vga1", "VGA 1", this, null)
-                    }
-                }
+                Items = _activeInputs.Count == 0 ? _defaultInputs : _defaultInputs
+                .Where(kv => _activeInputs
+                .Any((i) => i.Equals(kv.Key, StringComparison.InvariantCultureIgnoreCase)))
+                .ToDictionary(kv => kv.Key, kv => kv.Value)
             };
 #endif
         }
@@ -746,6 +775,20 @@ namespace SonyBraviaEpi
             }
         }
 
+        public void ResetPolling()
+        {
+            _pollTimer.Reset(100, pollTime);
+        }
+
+        public void SendRs232Command(byte[] command)
+        {
+            Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending command: {command}",this, command);
+
+            _lastCommand = command;
+            _coms.SendBytes(command);
+            _pollTimer.Reset(100, pollTime);
+        }
+
         private void ProcessRs232Response(byte[] response)
         {
             try
@@ -753,8 +796,10 @@ namespace SonyBraviaEpi
                 var buffer = new byte[_incomingBuffer.Length + response.Length];
                 _incomingBuffer.CopyTo(buffer, 0);
                 response.CopyTo(buffer, _incomingBuffer.Length);
-                
-                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessRs232Response: {0}", ComTextHelper.GetEscapedText(buffer));
+
+                // Debug.Console(DebugLevels.DebugLevel, this, "ProcessRs232Response: {0}", ComTextHelper.GetEscapedText(buffer));
+
+                Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "ProcessRs232Response: {lastCommand}:{response}", this, ComTextHelper.GetEscapedText(_lastCommand), ComTextHelper.GetEscapedText(buffer));
                 
                 //it starts a valid response
                 if (buffer.Length >= 3)
@@ -853,7 +898,7 @@ namespace SonyBraviaEpi
                 return;
             }
 
-            Debug.Console(DebugLevels.DebugLevel, this, consoleMessageFormat, ComTextHelper.GetEscapedText(message));
+            Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Ack: {message}", this, string.Format(consoleMessageFormat, ComTextHelper.GetEscapedText(message)));
         }
 
         private object ProcessSimpleIpResponse(object _)
@@ -1005,26 +1050,40 @@ namespace SonyBraviaEpi
                 input.Select();
             }
 
-            _pollTimer.Reset(1000, 15000);
+            _pollTimer.Reset(1000, pollTime);
         }
 #endif
         public void MuteOn()
         {
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetMuteOn(_coms, UpdateLastSentCommandType)
-                : null);
-            _pollTimer.Reset(1000, 15000);
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.MuteOn.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+                _pollTimer.Reset(100, pollTime);
+                return;
+            }
+
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 0));
+            _pollTimer.Reset(100, pollTime);
         }
 
         public void MuteOff()
         {
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetMuteOff(_coms, UpdateLastSentCommandType)
-                : null);
-            _pollTimer.Reset(1000, 15000);
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.MuteOff.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+                _pollTimer.Reset(1000, pollTime);
+                return;
+            }
+
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 1));
+            _pollTimer.Reset(1000, pollTime);
         }
         public void MuteToggle()
-        {
+        {            
             if (_muted)
             {
                 MuteOff();
@@ -1036,30 +1095,101 @@ namespace SonyBraviaEpi
 
         public void SetVolume(ushort level)
         {
-            var scaledVolume = CrestronEnvironment.ScaleWithLimits(level, 65535, 0, 255, 0);
+            var scaledVolume = CrestronEnvironment.ScaleWithLimits(level, 65535, 0, maxVolumeLevel, 0);
 
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetVolumeDirect(_coms, UpdateLastSentCommandType, scaledVolume)
-                : null);
-            _pollTimer.Reset(1000, 15000);
+            Debug.Console(2, this, "Input level: {0} scaled: {1}", level, scaledVolume);
+
+            var volumeCommand = Rs232Commands.VolumeDirect;
+
+            volumeCommand[5] = (byte) scaledVolume;
+
+            if (_comsIsRs232)
+            {                
+                var command = volumeCommand.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);              
+
+                _pollTimer.Reset(0, pollTime);
+
+                return;
+            }
+
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", scaledVolume));
+            _pollTimer.Reset(1000, pollTime);
         }
 
         public void VolumeUp(bool pressRelease)
         {
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetVolumeUp(_coms, UpdateLastSentCommandType)
-                : null);
-            _pollTimer.Reset(1000, 15000);
+            if (!pressRelease) 
+            {
+                if (_volumeTimer != null)
+                {
+                    _volumeTimer.Stop();
+                    _volumeTimer.Dispose();
+                    _volumeTimer = null;
+                }
+
+                var command = Rs232Commands.VolumeQuery.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+
+                _pollTimer.Reset(1000, pollTime);
+                return;
+            }
+
+            if (_comsIsRs232)
+            {
+                _pollTimer.Stop();
+
+                _volumeCounter = 0;
+
+                _volumeTimer = new CTimer(o => {
+                    var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeUp.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
+                    _lastCommand = command;
+                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending Volume up command {command}", this, ComTextHelper.GetEscapedText(command));
+                    _coms.SendBytes(command);
+                    _volumeCounter += 1;
+                }, null, 0, 500);
+                
+                return;
+            }
         }
 
         public void VolumeDown(bool pressRelease)
         {
-            CommandQueue.Enqueue(_comsIsRs232
-                ? Rs232Commands.GetVolumeDown(_coms, UpdateLastSentCommandType)
-                : null);
-            _pollTimer.Reset(1000, 15000);
+            if (!pressRelease)
+            {
+                if (_volumeTimer != null)
+                {
+                    _volumeTimer.Stop();
+                    _volumeTimer.Dispose();
+                    _volumeTimer = null;
+                }
+
+                var command = Rs232Commands.VolumeQuery.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+
+                _pollTimer.Reset(1000, pollTime);
+                return;
+            }
+
+            if (_comsIsRs232)
+            {
+                _pollTimer.Stop();
+
+                _volumeCounter = 0;
+
+                _volumeTimer = new CTimer(o => {
+                    var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeDown.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
+                    _lastCommand = command;
+                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending Volume up command {command}", this, ComTextHelper.GetEscapedText(command));
+                    _coms.SendBytes(command);
+                    _volumeCounter += 1;
+                }, null, 0, 500);
+
+                return;
+            }
         }
-
-
     }
 }

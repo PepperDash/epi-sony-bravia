@@ -61,8 +61,7 @@ namespace SonyBraviaEpi
     {
         private bool _isSelected;
 
-        private readonly byte[] _command;
-        private readonly IBasicCommunication _coms;
+        private readonly byte[] _command;        
 
         private readonly IQueueMessage _inputCommand;
         private readonly SonyBraviaDevice _parent;        
@@ -75,12 +74,12 @@ namespace SonyBraviaEpi
             _inputCommand = inputCommand;
         }
 
-        public SonyBraviaInput(string key, string name, IBasicCommunication coms, byte[] command)
+        public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, byte[] command)
         {
             Key = key;
-            Name = name;
-            _coms = coms;
+            Name = name;            
             _command = command;
+            _parent = parent;
         }
 
         public string Key { get; private set; }
@@ -105,9 +104,12 @@ namespace SonyBraviaEpi
 
         public void Select()
         {
-            if(_coms !=  null && _command != null)
+            if(_parent.ComsIsRs232)
             {
-                _coms.SendBytes(_command);
+               Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending input command for {name}: {command}",this, Name, ComTextHelper.GetEscapedText(_command));
+
+                _parent.SendRs232Command(_command);                
+                
                 return;
             }
 
