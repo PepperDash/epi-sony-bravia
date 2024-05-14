@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Independentsoft.Email.Mime;
 using PepperDash.Core;
 using PepperDash.Essentials.Core.Queues;
 
