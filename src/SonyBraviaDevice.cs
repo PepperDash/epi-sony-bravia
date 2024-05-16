@@ -229,7 +229,7 @@ namespace SonyBraviaEpi
                     if (type != eProgramStatusEventType.Stopping)
                         return;
 
-                    worker.Abort();
+                    worker?.Abort();
 
                     _pollTimer.Stop();
                     _pollTimer.Dispose();
@@ -1146,7 +1146,7 @@ namespace SonyBraviaEpi
                 _volumeTimer = new CTimer(o => {
                     var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeUp.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
                     _lastCommand = command;
-                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending Volume up command {command}", this, ComTextHelper.GetEscapedText(command));
+                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, _volumeCounter % 2 == 0 ? "Sending Volume Up command {command}" : "Sending Volume Query command {command}", this, ComTextHelper.GetEscapedText(command));
                     _coms.SendBytes(command);
                     _volumeCounter += 1;
                 }, null, 0, 500);
@@ -1183,7 +1183,7 @@ namespace SonyBraviaEpi
                 _volumeTimer = new CTimer(o => {
                     var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeDown.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
                     _lastCommand = command;
-                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending Volume up command {command}", this, ComTextHelper.GetEscapedText(command));
+                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, _volumeCounter % 2 == 0 ? "Sending Volume Down command {command}" : "Sending Volume Query command {command}", this, ComTextHelper.GetEscapedText(command));
                     _coms.SendBytes(command);
                     _volumeCounter += 1;
                 }, null, 0, 500);
