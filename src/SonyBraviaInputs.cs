@@ -1,4 +1,5 @@
 ﻿
+using PepperDash.Core;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using SonyBraviaEpi;
@@ -60,8 +61,10 @@ namespace SonyBraviaEpi
     {
         private bool _isSelected;
 
+        private readonly byte[] _command;        
+
         private readonly IQueueMessage _inputCommand;
-        private readonly SonyBraviaDevice _parent;
+        private readonly SonyBraviaDevice _parent;        
 
         public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, IQueueMessage inputCommand)
         {
@@ -69,6 +72,14 @@ namespace SonyBraviaEpi
             Name = name;
             _parent = parent;
             _inputCommand = inputCommand;
+        }
+
+        public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, byte[] command)
+        {
+            Key = key;
+            Name = name;            
+            _command = command;
+            _parent = parent;
         }
 
         public string Key { get; private set; }
@@ -93,6 +104,15 @@ namespace SonyBraviaEpi
 
         public void Select()
         {
+            if(_parent.ComsIsRs232)
+            {
+               Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending input command for {name}: {command}",this, Name, ComTextHelper.GetEscapedText(_command));
+
+                _parent.SendRs232Command(_command);                
+                
+                return;
+            }
+
             _parent.EnqueueCommand(_inputCommand);
         }
     }

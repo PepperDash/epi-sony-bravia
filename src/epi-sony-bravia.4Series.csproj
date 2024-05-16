@@ -10,7 +10,7 @@
     <Company>PepperDash Technologies</Company>
     <Description>This software is a plugin designed to work as a part of PepperDash Essentials for Crestron control processors. This plugin allows for control of Sony Bravia Displays.</Description>
     <Copyright>Copyright 2024</Copyright>
-    <Version>1.0.0-local</Version>
+    <Version>1.0.1-local</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <InformationalVersion>$(Version)</InformationalVersion>
     <OutputPath>4Series\bin\$(Configuration)\</OutputPath>
@@ -43,6 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PepperDashEssentials" Version="2.0.0-beta-2431" />
+    <PackageReference Include="PepperDashEssentials" Version="2.0.0-beta-2490" />
   </ItemGroup>
 </Project>
