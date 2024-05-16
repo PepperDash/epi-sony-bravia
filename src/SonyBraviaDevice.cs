@@ -9,6 +9,7 @@ using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
 using Org.BouncyCastle.Asn1.Cmp;
 using PepperDash.Core;
+using PepperDash.Core.Logging;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.Config;
@@ -58,7 +59,7 @@ namespace SonyBraviaEpi
         private readonly long _warmingtimeMs;
 
         private int pollIndex = 0;
-        private List<string> _activeInputs;
+        private List<SonyBraviaInputConfig> _activeInputs;
 
         private Dictionary<byte, string> _ackStringFormats = new Dictionary<byte, string> {
             {0x00, "Control complete ({0})"},
@@ -139,6 +140,8 @@ namespace SonyBraviaEpi
             BuildInputRoutingPorts();
 
             _activeInputs = props.ActiveInputs;
+
+            this.LogVerbose("active inputs from config {@activeInputs}", _activeInputs);
 
             var empty = new byte[] { };
 
@@ -540,15 +543,16 @@ namespace SonyBraviaEpi
 
         private void SetupInputs()
         {
-#if SERIES4
+            this.LogDebug("Found {activeInputCount} active Inputs & {defaultInputCount} default Inputs", _activeInputs?.Count, _defaultInputs?.Count);
+
             Inputs = new SonyBraviaInputs
             {
-                Items = _activeInputs.Count == 0 ? _defaultInputs : _defaultInputs
-                .Where(kv => _activeInputs
-                .Any((i) => i.Equals(kv.Key, StringComparison.InvariantCultureIgnoreCase)))
-                .ToDictionary(kv => kv.Key, kv => kv.Value)
+                Items = _activeInputs == null || _activeInputs.Count == 0
+                ? _defaultInputs
+                : _defaultInputs
+                    .Where(kv => _activeInputs.Any((i) => i.Key.Equals(kv.Key, StringComparison.InvariantCultureIgnoreCase)))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value)
             };
-#endif
         }
 
         /// <summary>

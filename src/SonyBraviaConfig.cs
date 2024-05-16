@@ -18,6 +18,15 @@ namespace SonyBraviaEpi
         public byte MaxVolumeLevel { get; set; } = 0xFF;
 
         [JsonProperty("activeInputs")]
-        public List<string> ActiveInputs { get; set; } = new List<string>();
+        public List<SonyBraviaInputConfig> ActiveInputs { get; set; } = new List<SonyBraviaInputConfig>();
+    }
+
+    public class SonyBraviaInputConfig:IKeyName
+    {
+        [JsonProperty("key")]
+        public string Key { get; set; } = string.Empty;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = string.Empty;
     }
 }
