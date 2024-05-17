@@ -1122,6 +1122,32 @@ namespace SonyBraviaEpi
             _pollTimer.Reset(1000, pollTime);
         }
 
+        private void SetVolume(int level, bool resetPoll = false)
+        {
+            Debug.Console(2, this, "Input level: {0}", level);
+
+            var volumeCommand = Rs232Commands.VolumeDirect;
+
+            volumeCommand[5] = (byte)level;
+
+            if (_comsIsRs232)
+            {
+                var command = volumeCommand.WithChecksum();
+                _lastCommand = command;
+                _coms.SendBytes(command);
+
+                if (resetPoll)
+                {
+                    _pollTimer.Reset(1000, pollTime);
+                }
+
+                return;
+            }
+
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", level));
+            _pollTimer.Reset(1000, pollTime);
+        }
+
         public void VolumeUp(bool pressRelease)
         {
             if (!pressRelease) 
@@ -1132,10 +1158,6 @@ namespace SonyBraviaEpi
                     _volumeTimer.Dispose();
                     _volumeTimer = null;
                 }
-
-                var command = Rs232Commands.VolumeQuery.WithChecksum();
-                _lastCommand = command;
-                _coms.SendBytes(command);
 
                 _pollTimer.Reset(1000, pollTime);
                 return;
@@ -1148,10 +1170,28 @@ namespace SonyBraviaEpi
                 _volumeCounter = 0;
 
                 _volumeTimer = new CTimer(o => {
-                    var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeUp.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
-                    _lastCommand = command;
-                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, _volumeCounter % 2 == 0 ? "Sending Volume Up command {command}" : "Sending Volume Query command {command}", this, ComTextHelper.GetEscapedText(command));
-                    _coms.SendBytes(command);
+                    this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
+                    
+                    if (_rawVolume > maxVolumeLevel) return;
+
+                    int increment = 1;
+
+                    if (_volumeCounter > 4)
+                    {
+                        increment = 2;
+                    }
+
+                    if (_volumeCounter > 16)
+                    {
+                        increment = 4;
+                    }
+
+                    _rawVolume += increment;
+
+                    SetVolume(_rawVolume);
+
+                    VolumeLevelFeedback.FireUpdate();
+
                     _volumeCounter += 1;
                 }, null, 0, 500);
                 
@@ -1168,11 +1208,7 @@ namespace SonyBraviaEpi
                     _volumeTimer.Stop();
                     _volumeTimer.Dispose();
                     _volumeTimer = null;
-                }
-
-                var command = Rs232Commands.VolumeQuery.WithChecksum();
-                _lastCommand = command;
-                _coms.SendBytes(command);
+                }                
 
                 _pollTimer.Reset(1000, pollTime);
                 return;
@@ -1183,13 +1219,32 @@ namespace SonyBraviaEpi
                 _pollTimer.Stop();
 
                 _volumeCounter = 0;
-
+                
                 _volumeTimer = new CTimer(o => {
-                    var command = _volumeCounter % 2 == 0 ? Rs232Commands.VolumeDown.WithChecksum() : Rs232Commands.VolumeQuery.WithChecksum();
-                    _lastCommand = command;
-                    Debug.LogMessage(Serilog.Events.LogEventLevel.Information, _volumeCounter % 2 == 0 ? "Sending Volume Down command {command}" : "Sending Volume Query command {command}", this, ComTextHelper.GetEscapedText(command));
-                    _coms.SendBytes(command);
+                    this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
+
+                    if (_rawVolume <= 0) return;
+
+                    int increment = 1;
+
+                    if(_volumeCounter > 4)
+                    {
+                        increment = 2;
+                    }
+
+                    if(_volumeCounter > 16)
+                    {
+                        increment = 4;
+                    }
+
+                    _rawVolume -= increment;
+
+                    SetVolume(_rawVolume);
+
+                    VolumeLevelFeedback.FireUpdate();
+
                     _volumeCounter += 1;
+
                 }, null, 0, 500);
 
                 return;
