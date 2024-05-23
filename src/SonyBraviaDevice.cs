@@ -23,7 +23,9 @@ namespace SonyBraviaEpi
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
         IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
         IOnline,
-        IBasicVolumeWithFeedback
+        IBasicVolumeWithFeedback,
+        IHasPowerControlWithFeedback,
+        IRoutingSinkWithSwitching
 #if SERIES4
         , IHasInputs<string, string>
 #endif
@@ -406,10 +408,14 @@ namespace SonyBraviaEpi
         public override void PowerOn()
         {
             if (_comsIsRs232) {
+                _pollTimer.Stop();
+
+                CrestronEnvironment.Sleep(500);
+
                 var command = Rs232Commands.PowerOn.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Reset(500, pollTime);
                 return;
             }
             CommandQueue.Enqueue(_powerOnCommand);
@@ -423,10 +429,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                _pollTimer.Stop();
+
+                CrestronEnvironment.Sleep(500);
+
                 var command = Rs232Commands.PowerOff.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Reset(500, pollTime);
                 return;
             }
             CommandQueue.Enqueue(_powerOffCommand);
