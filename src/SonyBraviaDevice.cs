@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing.Text;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
-using Org.BouncyCastle.Asn1.Cmp;
 using PepperDash.Core;
 using PepperDash.Core.Logging;
 using PepperDash.Essentials.Core;
@@ -15,8 +13,9 @@ using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
-using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Devices.Displays;
+using Serilog.Events;
+using TwoWayDisplayBase = PepperDash.Essentials.Devices.Common.Displays.TwoWayDisplayBase;
 
 namespace SonyBraviaEpi
 {
@@ -25,7 +24,7 @@ namespace SonyBraviaEpi
         IOnline,
         IBasicVolumeWithFeedback,
         IHasPowerControlWithFeedback,
-        IRoutingSinkWithSwitching
+        IRoutingSinkWithSwitchingWithInputPort
 #if SERIES4
         , IHasInputs<string, string>
 #endif
@@ -504,51 +503,63 @@ namespace SonyBraviaEpi
         {
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.HdmiIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
-                    new Action(InputHdmi1), this), 1);
+                    new Action(InputHdmi1), this)
+            { FeedbackMatchObject = 0x0401}, 1);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.HdmiIn2, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
-                    new Action(InputHdmi2), this), 2);
+                    new Action(InputHdmi2), this)
+            { FeedbackMatchObject = 0x0402 }, 2);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.HdmiIn3, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
-                    new Action(InputHdmi3), this), 3);
+                    new Action(InputHdmi3), this)
+            { FeedbackMatchObject = 0x0403 }, 3);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.HdmiIn4, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
-                    new Action(InputHdmi4), this), 4);
+                    new Action(InputHdmi4), this)
+            { FeedbackMatchObject = 0x0404 }, 4);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.HdmiIn5, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi,
-                    new Action(InputHdmi5), this), 5);
+                    new Action(InputHdmi5), this)
+            { FeedbackMatchObject = 0x0405 }, 5);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.VgaIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Vga,
-                    new Action(InputVga1), this), 6);
+                    new Action(InputVga1), this)
+            { FeedbackMatchObject = 0x0501 }, 6);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.CompositeIn, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
-                    new Action(InputVideo1), this), 7);
+                    new Action(InputVideo1), this)
+            { FeedbackMatchObject = 0x0201 }, 7);
 
             AddInputRoutingPort(new RoutingInputPort(
                     "CompositeIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
-                    new Action(InputVideo2), this), 8);
+                    new Action(InputVideo2), this)
+            { FeedbackMatchObject = 0x0202 }, 8);
 
             AddInputRoutingPort(new RoutingInputPort(
-                    "CompositeIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
-                    new Action(InputVideo3), this), 9);
+                    "CompositeIn3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Composite,
+                    new Action(InputVideo3), this)
+            { FeedbackMatchObject = 0x0203 }, 9);
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.ComponentIn, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
-                    new Action(InputVideo3), this), 10);
+                    new Action(InputVideo3), this)
+            { FeedbackMatchObject = 0x0301 }, 10);
 
             AddInputRoutingPort(new RoutingInputPort(
                     "componentIn2", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
-                    new Action(InputComponent2), this), 11);
+                    new Action(InputComponent2), this)
+            { FeedbackMatchObject = 0x0302 }, 11);
 
             AddInputRoutingPort(new RoutingInputPort(
                     "componentIn3", eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
-                    new Action(InputComponent3), this), 12);
+                    new Action(InputComponent3), this)
+            { FeedbackMatchObject = 0x0303 }, 12);
         }
 
         private void SetupInputs()
@@ -763,26 +774,25 @@ namespace SonyBraviaEpi
         {
             if (PowerIsOn)
             {
-                var action = selector as Action;
-                if (action == null) return;
+                if (!(selector is Action action)) return;
 
                 action();
+
+
             }
             else
             {
-                EventHandler<FeedbackEventArgs> handler = null;
-                handler = (sender, args) =>
+                void handler(object sender, FeedbackEventArgs args)
                 {
                     if (IsWarming)
                         return;
 
                     IsWarmingUpFeedback.OutputChange -= handler;
 
-                    var action = selector as Action;
-                    if (action == null) return;
+                    if (!(selector is Action action)) return;
 
                     action();
-                };
+                }
 
                 IsWarmingUpFeedback.OutputChange += handler;
                 PowerOn();
@@ -874,6 +884,15 @@ namespace SonyBraviaEpi
                 case 0x02: //input
                     _currentInput = Rs232ParsingUtils.ParseInputResponse(message);
                     CurrentInputFeedback.FireUpdate();
+
+                    var inputNumber = message[3] << 8 | message[4];
+
+                    var inputPort = InputPorts.FirstOrDefault((p) => (int) p.FeedbackMatchObject == inputNumber);
+
+                    if(inputPort != null)
+                    {
+                        CurrentInputPort = inputPort;
+                    }
 #if SERIES4
                     if (Inputs.Items.ContainsKey(_currentInput))
                     {
