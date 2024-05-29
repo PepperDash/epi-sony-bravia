@@ -268,9 +268,7 @@ namespace SonyBraviaEpi
                 pollIndex = 0;
             }
 
-            var command = pollCommands[pollIndex];
-
-            Debug.Console(2, this, "Sending command {0}", ComTextHelper.GetEscapedText(command));
+            var command = pollCommands[pollIndex];            
 
             _lastCommand = command;
             _coms.SendBytes(command);
@@ -806,7 +804,7 @@ namespace SonyBraviaEpi
 
         public void SendRs232Command(byte[] command)
         {
-            Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending command: {command}",this, command);
+            // Debug.LogMessage(Serilog.Events.LogEventLevel.Verbose, "Sending command: {command}",this, command);
 
             _lastCommand = command;
             _coms.SendBytes(command);
@@ -885,15 +883,6 @@ namespace SonyBraviaEpi
                     _currentInput = Rs232ParsingUtils.ParseInputResponse(message);
                     CurrentInputFeedback.FireUpdate();
 
-                    var inputNumber = message[3] << 8 | message[4];
-
-                    var inputPort = InputPorts.FirstOrDefault((p) => (int) p.FeedbackMatchObject == inputNumber);
-
-                    if(inputPort != null)
-                    {
-                        CurrentInputPort = inputPort;
-                    }
-#if SERIES4
                     if (Inputs.Items.ContainsKey(_currentInput))
                     {
                         foreach(var input in Inputs.Items)
@@ -903,8 +892,12 @@ namespace SonyBraviaEpi
                     }
 
                     Inputs.CurrentItem = _currentInput;
-#endif
 
+                    var inputNumber = message[3] << 8 | message[4];
+
+                    var routingPort = InputPorts.FirstOrDefault((p) => p.FeedbackMatchObject.Equals(inputNumber));
+
+                    CurrentInputPort = routingPort;
 
                     break;
                 case 0x05: //volume
