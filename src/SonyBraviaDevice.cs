@@ -294,7 +294,7 @@ namespace SonyBraviaEpi
                     return;
                 }
 
-                if (_powerIsOn)
+                if (value)
                 {
                     IsWarming = true;
 
@@ -302,6 +302,7 @@ namespace SonyBraviaEpi
                     {
                         _powerIsOn = value;
                         IsWarming = false;
+                        PowerIsOnFeedback.FireUpdate();
                     }, _warmingtimeMs);
                 }
                 else
@@ -312,6 +313,7 @@ namespace SonyBraviaEpi
                     {
                         _powerIsOn = value;
                         IsCooling = false;
+                        PowerIsOnFeedback.FireUpdate();
                     }, _coolingTimeMs);
                 }
             }
