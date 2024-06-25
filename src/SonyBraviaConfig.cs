@@ -10,7 +10,10 @@ namespace SonyBraviaEpi
         public CommunicationMonitorConfig CommunicationMonitorProperties { get; set; }
         public ControlPropertiesConfig Control { get; set; }
 
+        [JsonProperty("warmingTimeMs")]
         public long? WarmingTimeMs { get; set; }
+
+        [JsonProperty("coolingTimeMs")]
         public long? CoolingTimeMs { get; set; }
         public bool ForceRs232 { get; set; }
 
