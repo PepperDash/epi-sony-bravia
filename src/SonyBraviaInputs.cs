@@ -2,16 +2,11 @@
 using PepperDash.Core;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
-using SonyBraviaEpi;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SonyBraviaEpi
 {
-#if SERIES4
     public class SonyBraviaInputs : ISelectableItems<string>
     {
         private Dictionary<string, ISelectableItem> _items = new Dictionary<string, ISelectableItem>();
@@ -61,10 +56,10 @@ namespace SonyBraviaEpi
     {
         private bool _isSelected;
 
-        private readonly byte[] _command;        
+        private readonly byte[] _command;
 
         private readonly IQueueMessage _inputCommand;
-        private readonly SonyBraviaDevice _parent;        
+        private readonly SonyBraviaDevice _parent;
 
         public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, IQueueMessage inputCommand)
         {
@@ -77,7 +72,7 @@ namespace SonyBraviaEpi
         public SonyBraviaInput(string key, string name, SonyBraviaDevice parent, byte[] command)
         {
             Key = key;
-            Name = name;            
+            Name = name;
             _command = command;
             _parent = parent;
         }
@@ -104,17 +99,16 @@ namespace SonyBraviaEpi
 
         public void Select()
         {
-            if(_parent.ComsIsRs232)
+            if (_parent.ComsIsRs232)
             {
-               Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending input command for {name}: {command}",this, Name, ComTextHelper.GetEscapedText(_command));
+                Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Sending input command for {name}: {command}", this, Name, ComTextHelper.GetEscapedText(_command));
 
-                _parent.SendRs232Command(_command);                
-                
+                _parent.SendRs232Command(_command);
+
                 return;
             }
 
             _parent.EnqueueCommand(_inputCommand);
         }
     }
-#endif
 }
