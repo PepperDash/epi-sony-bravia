@@ -242,10 +242,10 @@ namespace SonyBraviaEpi
             commands
                 .ToList()
                 .ForEach(command =>
-                                      {
-                                          CommandQueue.Enqueue(command);
-                                          Thread.Sleep(100);
-                                      });
+                {
+                    CommandQueue.Enqueue(command);
+                    Thread.Sleep(100);
+                });
         }
 
         /// <summary>
@@ -372,6 +372,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi1()
         {
+            Thread.Sleep(500);
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetHdmi1(_coms)
                 : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
@@ -382,6 +383,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi2()
         {
+            Thread.Sleep(500);
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetHdmi2(_coms)
                 : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
@@ -392,6 +394,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi3()
         {
+            Thread.Sleep(500);
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetHdmi3(_coms)
                 : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
@@ -402,6 +405,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi4()
         {
+            Thread.Sleep(500);
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetHdmi4(_coms)
                 : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
@@ -412,6 +416,7 @@ namespace SonyBraviaEpi
         /// </summary>
         public void InputHdmi5()
         {
+            Thread.Sleep(500);
             CommandQueue.Enqueue(_comsIsRs232
                 ? Rs232Commands.GetHdmi5(_coms)
                 : SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));

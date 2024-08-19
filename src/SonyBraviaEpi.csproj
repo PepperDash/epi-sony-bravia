@@ -48,16 +48,16 @@
   <ItemGroup>
     <Reference Include="Essentials Devices Common, Version=1.9.6.35019, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\PepperDashEssentials\lib\net35\Essentials Devices Common.dll</HintPath>
+      <HintPath>..\..\stjn-sln101-health_sceinces_ctr\p01-essentials\PepperDashEssentials\lib\net35\Essentials Devices Common.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="PepperDash_Core, Version=1.1.0.33266, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\PepperDashEssentials\lib\net35\PepperDash_Core.dll</HintPath>
+      <HintPath>..\..\stjn-sln101-health_sceinces_ctr\p01-essentials\PepperDashEssentials\lib\net35\PepperDash_Core.dll</HintPath>
     </Reference>
     <Reference Include="PepperDash_Essentials_Core, Version=1.9.6.35015, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\PepperDashEssentials\lib\net35\PepperDash_Essentials_Core.dll</HintPath>
+      <HintPath>..\..\stjn-sln101-health_sceinces_ctr\p01-essentials\PepperDashEssentials\lib\net35\PepperDash_Essentials_Core.dll</HintPath>
     </Reference>
     <Reference Include="SimplSharpCustomAttributesInterface, Version=1.0.0.0, Culture=neutral, PublicKeyToken=1099c178b3b54c3b, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
