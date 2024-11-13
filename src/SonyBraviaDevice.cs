@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Serilog.Events;
 using TwoWayDisplayBase = PepperDash.Essentials.Devices.Common.Displays.TwoWayDisplayBase;
 
 namespace SonyBraviaEpi
@@ -387,8 +388,6 @@ namespace SonyBraviaEpi
         private bool _muted;
 
         private int _rawVolume;
-
-
 
         public BoolFeedback MuteFeedback { get; private set; }
 
@@ -833,7 +832,7 @@ namespace SonyBraviaEpi
 
                 // Debug.Console(DebugLevels.DebugLevel, this, "ProcessRs232Response: {0}", ComTextHelper.GetEscapedText(buffer));
 
-                Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "ProcessRs232Response: {lastCommand}:{response}", this, ComTextHelper.GetEscapedText(_lastCommand), ComTextHelper.GetEscapedText(buffer));
+                // Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "ProcessRs232Response: {lastCommand}:{response}", this, ComTextHelper.GetEscapedText(_lastCommand), ComTextHelper.GetEscapedText(buffer));
 
                 //it starts a valid response
                 if (buffer.Length >= 3)
@@ -876,10 +875,7 @@ namespace SonyBraviaEpi
             }
             catch (Exception ex)
             {
-                Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Exception: {0}", ex.Message);
-                Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Exception Stack Trace: {0}", ex.StackTrace);
-                if (ex.InnerException != null)
-                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error, "ProcessRs232Response Inner Exception: {0}", ex.InnerException);
+                Debug.LogMessage(ex, "Caught an exception in ProcessRs232Response: {0}", this, ex.Message);
             }
         }
 
