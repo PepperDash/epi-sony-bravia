@@ -229,6 +229,8 @@ namespace SonyBraviaEpi
             MuteFeedback = new BoolFeedback(() => _muted);
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
+            PictureModeFeedback = new StringFeedback(() => _pictureMode);
+
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
                 try
@@ -917,6 +919,10 @@ namespace SonyBraviaEpi
                     _muted = Rs232ParsingUtils.ParseMuteResponse(message);
                     MuteFeedback.FireUpdate();
                     break;
+                case 0x20: // picture mode
+                    _pictureMode = Rs232ParsingUtils.ParsePictureModeResponse(message);
+                    PictureModeFeedback.FireUpdate();
+                    break;
                 default:
                     Debug.Console(0, this, "Unknown response received: {0}", ComTextHelper.GetEscapedText(message));
                     break;
@@ -1282,5 +1288,162 @@ namespace SonyBraviaEpi
                 return;
             }
         }
+
+        #region PictureMode
+
+        private string _pictureMode;
+
+        public StringFeedback PictureModeFeedback { get; private set; }
+
+        /// <summary>
+        /// Select picture mode vivid
+        /// </summary>
+        public void PictureModeVivid()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeVivid.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode stadnard
+        /// </summary>
+        public void PictureModeStandard()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeStandard.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Cinema
+        /// </summary>
+        public void PictureModeCinema()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCinema.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Cinema 2
+        /// </summary>
+        public void PictureModeCinema2()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCinema2.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Custom
+        /// </summary>
+        public void PictureModeCustom()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCustom.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Sports
+        /// </summary>
+        public void PictureModeSports()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeSports.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Game
+        /// </summary>
+        public void PictureModeGame()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeGame.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Graphics
+        /// </summary>
+        public void PictureModeGraphics()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeGraphics.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Toggle
+        /// </summary>
+        public void PictureModeToggle()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeToggle.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+            
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+
+        #endregion
     }
 }

@@ -22,6 +22,19 @@ namespace SonyBraviaEpi
             {0x0405,"hdmi5" },
             {0x0501,"vga1" }            
         };
+
+        private static Dictionary<int, string> _pictureModeMap = new Dictionary<int, string>
+        {
+            {0x0100,"vivid" },
+            {0x0101,"standard" },
+            {0x0102,"cinema" },
+            {0x0103, "custom" },
+            {0x0104,"cinema2" },
+            {0x0105,"sports" },
+            {0x0106,"game" },
+            {0x0107,"graphics" }
+
+        };
         private const byte Header = 0x70;
 
         public static bool ParsePowerResponse(this byte[] response)
@@ -85,6 +98,24 @@ namespace SonyBraviaEpi
             if (response[3] != 0x01) { return false; }
 
             return response[4] == 0x01;
+        }
+        public static string ParsePictureModeResponse(this byte[] response)
+        {
+            // TODO [ ] actually add in parsing
+            Debug.Console(DebugLevels.DebugLevel, "ParsePictureModeResponse response: {0}", ComTextHelper.GetEscapedText(response));
+
+            //add together the input type byte & the input number byte
+            var pictureModeNumber = response[3] << 8 | response[4];
+
+            string pictureMode;
+
+            if (_pictureModeMap.TryGetValue(pictureModeNumber, out pictureMode))
+            {
+                Debug.Console(DebugLevels.DebugLevel, "Got picture mode {0}", pictureMode);
+                return pictureMode;
+            }
+
+            return pictureMode;
         }
 
         public static bool IsComplete(this byte[] message)
