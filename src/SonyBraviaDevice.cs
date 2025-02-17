@@ -641,7 +641,7 @@ namespace SonyBraviaEpi
         public void InputHdmi4()
         {
             if (_comsIsRs232)
-            {
+            {                
                 var command = Rs232Commands.InputHdmi4.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
