@@ -46,6 +46,6 @@ namespace SonyBraviaEpi
             // *SCINPT00000001000000010A
             var input = string.Format("{0:D8}{1:D8}", (int) inputType, inputValue);
             return new ComsMessage(coms, string.Format("{0}{1}{2}{3}{4}", Header, Convert.ToChar(MessageTypes.Control), "INPT", input, Footer));
-        }
+        }        
     }
 }
