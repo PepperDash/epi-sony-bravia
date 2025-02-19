@@ -266,6 +266,29 @@ namespace SonyBraviaEpi
             }
         }
 
+
+        public override bool CustomActivate()
+        {
+            AddMcMessengers();
+
+            return base.CustomActivate();
+        }
+
+        private void AddMcMessengers()
+        {
+            var mc = DeviceManager.AllDevices.OfType<IMobileControl>().FirstOrDefault();
+
+            if (mc == null)
+            {
+                this.LogInformation("Mobile Control not found");
+                return;
+            }
+
+            var messenger = new SonyBraviaPictureModeMessenger($"{Key}-pictureMode", $"/device/{Key}", this);
+
+            mc.AddDeviceMessenger(messenger);
+        }
+
         private void PollRs232(List<byte[]> pollCommands)
         {
             if (pollIndex >= pollCommands.Count)
