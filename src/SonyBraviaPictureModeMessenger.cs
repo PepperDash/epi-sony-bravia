@@ -21,7 +21,7 @@ namespace SonyBraviaEpi
             AddAction("/fullStatus", (id, content) =>
             {
                 this.LogVerbose("Handling full status request");
-                var message = new SonyBraviaPictureModesStatus
+                var message = new SonyBraviaPictureModeStatus
                 {
                     Mode = device.PictureModeFeedback.StringValue
                 };
@@ -32,7 +32,7 @@ namespace SonyBraviaEpi
             AddAction("/pictureMode", (id, content) =>
             {
                 this.LogVerbose("Handling picture mode request");
-                var request = content.ToObject<SonyBraviaPictureModesRequest>();
+                var request = content.ToObject<SonyBraviaPictureModeRequest>();
                 switch (request.Mode)
                 {
                     case "standard":
@@ -41,11 +41,26 @@ namespace SonyBraviaEpi
                     case "vivid":
                         device.PictureModeVivid();
                         break;
-                    case "cinema":
+                    case "cinema": 
                         device.PictureModeCinema();
+                        break;
+                    case "cinema2": 
+                        device.PictureModeCinema2();
+                        break;
+                    case "sports": 
+                        device.PictureModeSports();
+                        break;
+                    case "game": 
+                        device.PictureModeGame();
+                        break;
+                    case "graphics": 
+                        device.PictureModeGraphics();
                         break;
                     case "custom":
                         device.PictureModeCustom();
+                        break;
+                    case "toggle": 
+                        device.PictureModeToggle();
                         break;
                     default:
                         this.LogDebug("Unknown picture mode requested: {0}", request.Mode);
@@ -55,7 +70,7 @@ namespace SonyBraviaEpi
 
             device.PictureModeFeedback.OutputChange += (o, a) =>
             {
-                var message = new SonyBraviaPictureModesStatus
+                var message = new SonyBraviaPictureModeStatus
                 {
                     Mode = device.PictureModeFeedback.StringValue
                 };
@@ -65,7 +80,7 @@ namespace SonyBraviaEpi
         }
     }
 
-    class SonyBraviaPictureModesStatus : DeviceStateMessageBase
+    class SonyBraviaPictureModeStatus : DeviceStateMessageBase
     {
         [JsonProperty("mode")]
         public string Mode { get; set; }
@@ -80,7 +95,7 @@ namespace SonyBraviaEpi
         };
     }
 
-    class SonyBraviaPictureModesRequest
+    class SonyBraviaPictureModeRequest
     {
         [JsonProperty("mode")]
         public string Mode { get; set; }
