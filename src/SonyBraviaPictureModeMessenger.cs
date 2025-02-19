@@ -33,7 +33,7 @@ namespace SonyBraviaEpi
             {
                 this.LogVerbose("Handling picture mode request");
                 var request = content.ToObject<SonyBraviaPictureModesRequest>();
-                switch(request.Mode)
+                switch (request.Mode)
                 {
                     case "standard":
                         device.PictureModeStandard();
@@ -71,7 +71,13 @@ namespace SonyBraviaEpi
         public string Mode { get; set; }
 
         [JsonProperty("availablePictureModes")]
-        public List<string> AvailablePictureModes { get; set; } = new List<string> { "standard", "vivid", "cinema", "custom" };
+        public List<KeyValuePair<string, string>> AvailablePictureModes { get; set; } = new List<KeyValuePair<string, string>>
+        {
+            new KeyValuePair<string, string>("Standard", "standard"),
+            new KeyValuePair<string, string>("Vivid", "vivid"),
+            new KeyValuePair<string, string>("Cinema", "cinema"),
+            new KeyValuePair<string, string>("Custom", "custom")
+        };
     }
 
     class SonyBraviaPictureModesRequest
@@ -80,3 +86,5 @@ namespace SonyBraviaEpi
         public string Mode { get; set; }
     }
 }
+
+
