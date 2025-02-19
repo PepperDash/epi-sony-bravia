@@ -230,7 +230,7 @@ namespace SonyBraviaEpi
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
             PictureModeFeedback = new StringFeedback(() => _pictureMode);
-
+            
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
                 try
