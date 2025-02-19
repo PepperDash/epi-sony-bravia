@@ -73,10 +73,10 @@ namespace SonyBraviaEpi
         [JsonProperty("availablePictureModes")]
         public List<KeyValuePair<string, string>> AvailablePictureModes { get; set; } = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("Standard", "standard"),
-            new KeyValuePair<string, string>("Vivid", "vivid"),
-            new KeyValuePair<string, string>("Cinema", "cinema"),
-            new KeyValuePair<string, string>("Custom", "custom")
+            new KeyValuePair<string, string>("standard", "Standard"),
+            new KeyValuePair<string, string>("vivid", "Vivid"),
+            new KeyValuePair<string, string>("cinema", "Cinema"),
+            new KeyValuePair<string, string>("custom", "Custom")
         };
     }
 
