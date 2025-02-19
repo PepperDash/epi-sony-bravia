@@ -25,6 +25,14 @@ namespace SonyBraviaEpi
                     Mode = device.PictureModeFeedback.StringValue,
                     AvailablePictureModes = device.AvailablePictureModes.ConvertAll(mode => new PictureModeKeyName { Key = mode.Key, Name = mode.Name })
                 };
+                if(message.AvailablePictureModes.Count == 0)
+                {
+                    this.LogInformation("No available picture modes found");
+                }  
+                foreach (var mode in message.AvailablePictureModes)
+                {
+                    this.LogInformation("Available Picture Mode: {0}-{1}", message.Key, message.Name);
+                }
                 PostStatusMessage(message);
             });
 

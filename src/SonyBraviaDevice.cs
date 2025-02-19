@@ -231,7 +231,7 @@ namespace SonyBraviaEpi
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
             PictureModeFeedback = new StringFeedback(() => _pictureMode);
-            AvailablePictureModes = props.PictureModes;    
+            AvailablePictureModes = props.AvailablePictureModes;    
             
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
