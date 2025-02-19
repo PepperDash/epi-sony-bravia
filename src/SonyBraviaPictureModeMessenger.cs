@@ -93,18 +93,6 @@ namespace SonyBraviaEpi
             new IdLabel { Id = "cinema", Label = "Cinema" },
             new IdLabel { Id = "custom", Label = "Custom" }
         };
-
-        // public Dictionary<string, string> AvailablePictureModesDict { get; set; } = new Dictionary<string, string>
-        // {
-        //     { "standard", "Standard" },
-        //     { "vivid", "Vivid" },
-        //     { "cinema", "Cinema" },
-        //     { "cinema2", "Cinema 2" },
-        //     { "sports", "Sports" },
-        //     { "game", "Game" },
-        //     { "graphics", "Graphics" },
-        //     { "custom", "Custom" }
-        // };
     }
 
     class SonyBraviaPictureModeRequest
