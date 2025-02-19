@@ -10,7 +10,6 @@ namespace SonyBraviaEpi
     class SonyBraviaPictureModeMessenger : MessengerBase
     {
         private readonly SonyBraviaDevice device;
-
         public SonyBraviaPictureModeMessenger(string key, string messagePath, SonyBraviaDevice device) : base(key, messagePath, device)
         {
             this.device = device;
@@ -23,7 +22,8 @@ namespace SonyBraviaEpi
                 this.LogVerbose("Handling full status request");
                 var message = new SonyBraviaPictureModeStatus
                 {
-                    Mode = device.PictureModeFeedback.StringValue
+                    Mode = device.PictureModeFeedback.StringValue,
+                    AvailablePictureModes = device.AvailablePictureModes.ConvertAll(mode => new PictureModeKeyName { Key = mode.Key, Name = mode.Name })
                 };
                 PostStatusMessage(message);
             });
@@ -86,13 +86,13 @@ namespace SonyBraviaEpi
         public string Mode { get; set; }
 
         [JsonProperty("availablePictureModes")]
-        public List<IdLabel> AvailablePictureModes { get; set; } = new List<IdLabel>
-        {
-            new IdLabel { Id = "standard", Label = "Standard" },
-            new IdLabel { Id = "vivid", Label = "Vivid" },
-            new IdLabel { Id = "cinema", Label = "Cinema" },
-            new IdLabel { Id = "custom", Label = "Custom" }
-        };
+        public List<PictureModeKeyName> AvailablePictureModes { get; set; } = new List<PictureModeKeyName>{};
+        // {
+        //     new IdLabel { Id = "standard", Label = "Standard" },
+        //     new IdLabel { Id = "vivid", Label = "Vivid" },
+        //     new IdLabel { Id = "cinema", Label = "Cinema" },
+        //     new IdLabel { Id = "custom", Label = "Custom" }
+        // };
     }
 
     class SonyBraviaPictureModeRequest
@@ -101,13 +101,13 @@ namespace SonyBraviaEpi
         public string Mode { get; set; }
     }
 
-    class IdLabel
+    class PictureModeKeyName
     {
-        [JsonProperty("id")]
-        public string Id { get; set; }
+        [JsonProperty("key")]
+        public string Key { get; set; }
 
-        [JsonProperty("label")]
-        public string Label { get; set; }
+        [JsonProperty("name")]
+        public string Name { get; set; }
     }
 }
 

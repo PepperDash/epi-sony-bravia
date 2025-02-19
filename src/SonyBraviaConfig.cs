@@ -22,6 +22,9 @@ namespace SonyBraviaEpi
 
         [JsonProperty("activeInputs")]
         public List<SonyBraviaInputConfig> ActiveInputs { get; set; } = new List<SonyBraviaInputConfig>();
+
+        [JsonProperty("pictureModes")]
+        public List<SonyBraviaInputConfig> PictureModes { get; set; } = new List<SonyBraviaInputConfig>();
     }
 
     public class SonyBraviaInputConfig:IKeyName
