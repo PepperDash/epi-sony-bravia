@@ -86,19 +86,40 @@ namespace SonyBraviaEpi
         public string Mode { get; set; }
 
         [JsonProperty("availablePictureModes")]
-        public List<KeyValuePair<string, string>> AvailablePictureModes { get; set; } = new List<KeyValuePair<string, string>>
+        public List<IdLabel> AvailablePictureModes { get; set; } = new List<IdLabel>
         {
-            new KeyValuePair<string, string>("standard", "Standard"),
-            new KeyValuePair<string, string>("vivid", "Vivid"),
-            new KeyValuePair<string, string>("cinema", "Cinema"),
-            new KeyValuePair<string, string>("custom", "Custom")
+            new IdLabel { Id = "standard", Label = "Standard" },
+            new IdLabel { Id = "vivid", Label = "Vivid" },
+            new IdLabel { Id = "cinema", Label = "Cinema" },
+            new IdLabel { Id = "custom", Label = "Custom" }
         };
+
+        // public Dictionary<string, string> AvailablePictureModesDict { get; set; } = new Dictionary<string, string>
+        // {
+        //     { "standard", "Standard" },
+        //     { "vivid", "Vivid" },
+        //     { "cinema", "Cinema" },
+        //     { "cinema2", "Cinema 2" },
+        //     { "sports", "Sports" },
+        //     { "game", "Game" },
+        //     { "graphics", "Graphics" },
+        //     { "custom", "Custom" }
+        // };
     }
 
     class SonyBraviaPictureModeRequest
     {
         [JsonProperty("mode")]
         public string Mode { get; set; }
+    }
+
+    class IdLabel
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("label")]
+        public string Label { get; set; }
     }
 }
 
