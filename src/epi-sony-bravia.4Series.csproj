@@ -47,6 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="PepperDash.Essentials.Plugin.MobileControl.Messengers" Version="4.3.3" />
     <PackageReference Include="PepperDashEssentials" Version="2.0.0-alpha-2565" />
   </ItemGroup>
 </Project>

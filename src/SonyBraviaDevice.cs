@@ -61,6 +61,7 @@ namespace SonyBraviaEpi
 
         private int pollIndex = 0;
         private List<SonyBraviaInputConfig> _activeInputs;
+        public List<SonyBraviaInputConfig> AvailablePictureModes { get; private set; }
 
         private Dictionary<byte, string> _ackStringFormats = new Dictionary<byte, string> {
             {0x00, "Control complete ({0})"},
@@ -150,68 +151,68 @@ namespace SonyBraviaEpi
             var empty = new byte[] { };
 
             _defaultInputs = new Dictionary<string, ISelectableItem>
+            {
                 {
-                    {
-                        "hdmi1", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi1", "HDMI 1", this, Rs232Commands.InputHdmi1.WithChecksum())
-                            : new SonyBraviaInput("Hdmi1", "HDMI 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))
-                    },
-                    {
+                    "hdmi1", _comsIsRs232
+                        ? new SonyBraviaInput("Hdmi1", "HDMI 1", this, Rs232Commands.InputHdmi1.WithChecksum())
+                        : new SonyBraviaInput("Hdmi1", "HDMI 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))
+                },
+                {
 
-                        "hdmi2", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi2", "HDMI 2", this, Rs232Commands.InputHdmi2.WithChecksum())
-                            : new SonyBraviaInput("Hdmi2", "HDMI 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
-                    },
-                    {
-                        "hdmi3", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi3", "HDMI 3", this, Rs232Commands.InputHdmi3.WithChecksum())
-                            : new SonyBraviaInput("Hdmi3", "HDMI 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
-                    },
-                    {
-                        "hdmi4", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi4", "HDMI 4", this, Rs232Commands.InputHdmi4.WithChecksum())
-                            : new SonyBraviaInput("Hdmi4", "HDMI 4", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
-                    },
-                    {
-                        "hdmi5", _comsIsRs232
-                            ? new SonyBraviaInput("Hdmi5", "HDMI 5", this, Rs232Commands.InputHdmi5.WithChecksum())
-                            : new SonyBraviaInput("Hdmi5", "HDMI 5", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
-                    },
-                    {
-                        "video1",_comsIsRs232
-                            ? new SonyBraviaInput("video1", "Video 1", this, Rs232Commands.InputVideo1.WithChecksum())
-                            : new SonyBraviaInput("video1", "Video 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
-                    },
-                    {
-                        "video2",_comsIsRs232
-                            ? new SonyBraviaInput("video2", "Video 2", this, Rs232Commands.InputVideo2.WithChecksum())
-                            : new SonyBraviaInput("video2", "Video 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
-                    },
-                    {
-                        "video3", _comsIsRs232
-                            ? new SonyBraviaInput("video3", "Video 3", this, Rs232Commands.InputVideo3.WithChecksum())
-                            : new SonyBraviaInput("video3", "Video 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
-                    },
-                    {
-                        "component1", _comsIsRs232
-                            ?  new SonyBraviaInput("component1", "Component 1", this, Rs232Commands.InputComponent1.WithChecksum())
-                            : new SonyBraviaInput("component1", "Component 1", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
-                    },
-                    {
-                        "component2", _comsIsRs232
-                            ?  new SonyBraviaInput("component2", "Component 2", this, Rs232Commands.InputComponent2.WithChecksum())
-                            : new SonyBraviaInput("component2", "Component 2", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
-                    },
-                    {
-                        "component3", _comsIsRs232
-                            ?  new SonyBraviaInput("component3", "Component 3", this, Rs232Commands.InputComponent3.WithChecksum())
-                            : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
-                    },
-                    {
-                        "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputComponent1.WithChecksum())
-                        : new SonyBraviaInput("vga1", "VGA 1", this, empty)
-                        }
-                };
+                    "hdmi2", _comsIsRs232
+                        ? new SonyBraviaInput("Hdmi2", "HDMI 2", this, Rs232Commands.InputHdmi2.WithChecksum())
+                        : new SonyBraviaInput("Hdmi2", "HDMI 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
+                },
+                {
+                    "hdmi3", _comsIsRs232
+                        ? new SonyBraviaInput("Hdmi3", "HDMI 3", this, Rs232Commands.InputHdmi3.WithChecksum())
+                        : new SonyBraviaInput("Hdmi3", "HDMI 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
+                },
+                {
+                    "hdmi4", _comsIsRs232
+                        ? new SonyBraviaInput("Hdmi4", "HDMI 4", this, Rs232Commands.InputHdmi4.WithChecksum())
+                        : new SonyBraviaInput("Hdmi4", "HDMI 4", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
+                },
+                {
+                    "hdmi5", _comsIsRs232
+                        ? new SonyBraviaInput("Hdmi5", "HDMI 5", this, Rs232Commands.InputHdmi5.WithChecksum())
+                        : new SonyBraviaInput("Hdmi5", "HDMI 5", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
+                },
+                {
+                    "video1",_comsIsRs232
+                        ? new SonyBraviaInput("video1", "Video 1", this, Rs232Commands.InputVideo1.WithChecksum())
+                        : new SonyBraviaInput("video1", "Video 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
+                },
+                {
+                    "video2",_comsIsRs232
+                        ? new SonyBraviaInput("video2", "Video 2", this, Rs232Commands.InputVideo2.WithChecksum())
+                        : new SonyBraviaInput("video2", "Video 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
+                },
+                {
+                    "video3", _comsIsRs232
+                        ? new SonyBraviaInput("video3", "Video 3", this, Rs232Commands.InputVideo3.WithChecksum())
+                        : new SonyBraviaInput("video3", "Video 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
+                },
+                {
+                    "component1", _comsIsRs232
+                        ?  new SonyBraviaInput("component1", "Component 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                        : new SonyBraviaInput("component1", "Component 1", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
+                },
+                {
+                    "component2", _comsIsRs232
+                        ?  new SonyBraviaInput("component2", "Component 2", this, Rs232Commands.InputComponent2.WithChecksum())
+                        : new SonyBraviaInput("component2", "Component 2", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
+                },
+                {
+                    "component3", _comsIsRs232
+                        ?  new SonyBraviaInput("component3", "Component 3", this, Rs232Commands.InputComponent3.WithChecksum())
+                        : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
+                },
+                {
+                    "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                    : new SonyBraviaInput("vga1", "VGA 1", this, empty)
+                }
+            };
 
             SetupInputs();
 
@@ -229,6 +230,9 @@ namespace SonyBraviaEpi
             MuteFeedback = new BoolFeedback(() => _muted);
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
+            PictureModeFeedback = new StringFeedback(() => _pictureMode);
+            AvailablePictureModes = props.AvailablePictureModes;    
+            
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
                 try
@@ -262,6 +266,29 @@ namespace SonyBraviaEpi
                 Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
                     ex.Message, ex.StackTrace);
             }
+        }
+
+
+        public override bool CustomActivate()
+        {
+            AddMcMessengers();
+
+            return base.CustomActivate();
+        }
+
+        private void AddMcMessengers()
+        {
+            var mc = DeviceManager.AllDevices.OfType<IMobileControl>().FirstOrDefault();
+
+            if (mc == null)
+            {
+                this.LogInformation("Mobile Control not found");
+                return;
+            }
+
+            var messenger = new SonyBraviaPictureModeMessenger($"{Key}-pictureMode", $"/device/{Key}", this);
+
+            mc.AddDeviceMessenger(messenger);
         }
 
         private void PollRs232(List<byte[]> pollCommands)
@@ -639,7 +666,7 @@ namespace SonyBraviaEpi
         public void InputHdmi4()
         {
             if (_comsIsRs232)
-            {
+            {                
                 var command = Rs232Commands.InputHdmi4.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
@@ -916,6 +943,10 @@ namespace SonyBraviaEpi
                 case 0x06: //mute
                     _muted = Rs232ParsingUtils.ParseMuteResponse(message);
                     MuteFeedback.FireUpdate();
+                    break;
+                case 0x20: // picture mode
+                    _pictureMode = Rs232ParsingUtils.ParsePictureModeResponse(message);
+                    PictureModeFeedback.FireUpdate();
                     break;
                 default:
                     Debug.Console(0, this, "Unknown response received: {0}", ComTextHelper.GetEscapedText(message));
@@ -1282,5 +1313,162 @@ namespace SonyBraviaEpi
                 return;
             }
         }
+
+        #region PictureMode
+
+        private string _pictureMode;
+
+        public StringFeedback PictureModeFeedback { get; private set; }
+
+        /// <summary>
+        /// Select picture mode vivid
+        /// </summary>
+        public void PictureModeVivid()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeVivid.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode stadnard
+        /// </summary>
+        public void PictureModeStandard()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeStandard.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Cinema
+        /// </summary>
+        public void PictureModeCinema()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCinema.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Cinema 2
+        /// </summary>
+        public void PictureModeCinema2()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCinema2.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Custom
+        /// </summary>
+        public void PictureModeCustom()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeCustom.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Sports
+        /// </summary>
+        public void PictureModeSports()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeSports.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Game
+        /// </summary>
+        public void PictureModeGame()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeGame.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Graphics
+        /// </summary>
+        public void PictureModeGraphics()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeGraphics.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+
+            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+        /// <summary>
+        /// Select picture mode Toggle
+        /// </summary>
+        public void PictureModeToggle()
+        {
+            if (_comsIsRs232)
+            {
+                var command = Rs232Commands.PictureModeToggle.WithChecksum();
+                _coms.SendBytes(command);
+                _lastCommand = command;
+                return;
+            }
+            
+            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
+        }
+
+
+        #endregion
     }
 }
