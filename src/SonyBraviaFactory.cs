@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using PepperDash.Core;
+﻿using PepperDash.Core;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Config;
+using System.Collections.Generic;
 
-namespace SonyBraviaEpi
+namespace Pepperdash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaFactory : EssentialsPluginDeviceFactory<SonyBraviaDevice>
     {

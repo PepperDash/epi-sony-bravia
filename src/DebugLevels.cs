@@ -1,9 +1,9 @@
-﻿using System;
-using Crestron.SimplSharp;
+﻿using Crestron.SimplSharp;
 using PepperDash.Core;
 using PepperDash.Essentials.Core;
+using System;
 
-namespace SonyBraviaEpi
+namespace Pepperdash.Essentials.Plugins.SonyBravia
 {
     /// <summary>
     /// Has debug levels interface
@@ -154,7 +154,7 @@ namespace SonyBraviaEpi
 
             var key = string.IsNullOrEmpty(data[0]) ? string.Empty : data[0];
             var param = string.IsNullOrEmpty(data[1]) ? string.Empty : data[1];            
-            var timerLen = (long) ((data.Length < 3 || data[2] == null) ? DebugTimerDefaultMs : TimeSpan.FromMinutes(Convert.ToUInt16(data[2])).TotalMilliseconds);
+            var timerLen = (long) (data.Length < 3 || data[2] == null ? DebugTimerDefaultMs : TimeSpan.FromMinutes(Convert.ToUInt16(data[2])).TotalMilliseconds);
 
             if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(param))
                 return;

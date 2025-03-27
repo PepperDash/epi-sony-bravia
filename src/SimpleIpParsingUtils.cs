@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SonyBraviaEpi
+namespace Pepperdash.Essentials.Plugins.SonyBravia
 {
     public static class SimpleIpParsingUtils
     {

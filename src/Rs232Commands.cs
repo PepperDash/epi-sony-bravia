@@ -1,9 +1,9 @@
-﻿using System;
-using System.Linq;
-using PepperDash.Core;
+﻿using PepperDash.Core;
 using PepperDash.Essentials.Core.Queues;
+using System;
+using System.Linq;
 
-namespace SonyBraviaEpi
+namespace Pepperdash.Essentials.Plugins.SonyBravia
 {
     public static class Rs232Commands
     {

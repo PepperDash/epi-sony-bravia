@@ -1,11 +1,10 @@
 ﻿using Newtonsoft.Json;
-using PepperDash.Core;
+using Newtonsoft.Json.Linq;
 using PepperDash.Core.Logging;
 using PepperDash.Essentials.AppServer.Messengers;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
-namespace SonyBraviaEpi
+namespace Pepperdash.Essentials.Plugins.SonyBravia
 {
     class SonyBraviaPictureModeMessenger : MessengerBase
     {
