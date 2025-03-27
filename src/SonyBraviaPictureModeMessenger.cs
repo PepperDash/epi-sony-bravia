@@ -4,7 +4,7 @@ using PepperDash.Core.Logging;
 using PepperDash.Essentials.AppServer.Messengers;
 using System.Collections.Generic;
 
-namespace Pepperdash.Essentials.Plugins.SonyBravia
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     class SonyBraviaPictureModeMessenger : MessengerBase
     {

@@ -3,7 +3,7 @@ using PepperDash.Core;
 using PepperDash.Essentials.Core;
 using System.Collections.Generic;
 
-namespace Pepperdash.Essentials.Plugins.SonyBravia
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaConfig
     {

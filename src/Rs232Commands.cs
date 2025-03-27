@@ -3,7 +3,7 @@ using PepperDash.Essentials.Core.Queues;
 using System;
 using System.Linq;
 
-namespace Pepperdash.Essentials.Plugins.SonyBravia
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public static class Rs232Commands
     {

@@ -4,18 +4,18 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<TargetFramework>net472</TargetFramework>
-		<RootNamespace>Pepperdash.Essentials.Plugins.SonyBravia</RootNamespace>
+		<RootNamespace>PepperDash.Essentials.Plugins.SonyBravia</RootNamespace>
 		<Deterministic>false</Deterministic>
-		<AssemblyTitle>EPI.Sony.Bravia</AssemblyTitle>
+		<AssemblyTitle>PepperDash.Essentials.Plugins.Sony.Bravia</AssemblyTitle>
 		<Company>PepperDash Technologies</Company>
 		<Description>This software is a plugin designed to work as a part of PepperDash Essentials for Crestron control processors. This plugin allows for control of Sony Bravia Displays.</Description>
-		<Copyright>Copyright 2024</Copyright>
+		<Copyright>Copyright 2025</Copyright>
 		<Version>1.0.1-local</Version>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 		<InformationalVersion>$(Version)</InformationalVersion>
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 		<Authors>PepperDash Technologies</Authors>
-		<PackageId>Pepperdash.Essentials.Plugins.Sony.Bravia</PackageId>
+		<PackageId>PepperDash.Essentials.Plugins.Sony.Bravia</PackageId>
 		<PackageProjectUrl>https://github.com/PepperDash/epi-sony-bravia</PackageProjectUrl>
 		<PackageTags>crestron 4series sony bravia</PackageTags>
 	</PropertyGroup>

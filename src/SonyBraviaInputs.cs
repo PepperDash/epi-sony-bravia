@@ -4,7 +4,7 @@ using PepperDash.Essentials.Core.Queues;
 using System;
 using System.Collections.Generic;
 
-namespace Pepperdash.Essentials.Plugins.SonyBravia
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaInputs : ISelectableItems<string>
     {

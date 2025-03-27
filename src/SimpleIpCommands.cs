@@ -2,7 +2,7 @@
 using PepperDash.Essentials.Core.Queues;
 using System;
 
-namespace Pepperdash.Essentials.Plugins.SonyBravia
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SimpleIpCommands
     {
