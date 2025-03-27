@@ -1327,12 +1327,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Vivid");
                 var command = Rs232Commands.PictureModeVivid.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
+            this.LogVerbose("Picture Mode Vivid not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1343,12 +1345,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Standard");
                 var command = Rs232Commands.PictureModeStandard.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
+            this.LogVerbose("Picture Mode Standard not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1359,12 +1363,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Cinema");
                 var command = Rs232Commands.PictureModeCinema.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
+            this.LogVerbose("Picture Mode Cinema not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1375,12 +1381,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Cinema 2");
                 var command = Rs232Commands.PictureModeCinema2.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
+            this.LogVerbose("Picture Mode Cinema 2 not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1391,13 +1399,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Custom");
                 var command = Rs232Commands.PictureModeCustom.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
-            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            this.LogVerbose("Picture Mode Custom not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1408,13 +1417,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Sports");
                 var command = Rs232Commands.PictureModeSports.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
-            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            this.LogVerbose("Picture Mode Sports not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1425,13 +1435,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Game");
                 var command = Rs232Commands.PictureModeGame.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
-            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            this.LogVerbose("Picture Mode Game not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1442,13 +1453,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Graphics");
                 var command = Rs232Commands.PictureModeGraphics.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
 
-            Debug.Console(0, this, "Picture Mode direct select is not available using SimpleIP commands");
+            this.LogVerbose("Picture Mode Graphics not available using IP control");
             //CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 
@@ -1459,12 +1471,14 @@ namespace SonyBraviaEpi
         {
             if (_comsIsRs232)
             {
+                this.LogVerbose("Picture Mode Toggle");
                 var command = Rs232Commands.PictureModeToggle.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
                 return;
             }
-            
+
+            this.LogVerbose("Picture Mode Toggle");
             CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "IRCC", 110));
         }
 

@@ -36,7 +36,7 @@ namespace SonyBraviaEpi
                 PostStatusMessage(message);
             });
 
-            // "/device/{device-key}/picturemode"
+            // "/device/{device-key}/pictureMode"
             AddAction("/pictureMode", (id, content) =>
             {
                 this.LogVerbose("Handling picture mode request");
