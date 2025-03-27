@@ -25,9 +25,6 @@ namespace SonyBraviaEpi
         IBasicVolumeWithFeedbackAdvanced,
         IHasPowerControlWithFeedback,
         IRoutingSinkWithSwitchingWithInputPort
-#if SERIES4
-        , IHasInputs<string, string>
-#endif
     {
         private const long pollTime = 2000;
         private readonly IBasicCommunication _coms;
@@ -109,9 +106,6 @@ namespace SonyBraviaEpi
 
                     _queueRs232.Enqueue(new Rs232Response(args.Bytes, ProcessRs232Response));
                 };
-
-                //_coms.BytesReceived += (sender, args) => ProcessRs232Response(args.Bytes);
-
 
                 _powerOnCommand = Rs232Commands.GetPowerOn(_coms, (c) => { });
                 _powerOffCommand = Rs232Commands.GetPowerOff(_coms, (c) => { });
@@ -271,12 +265,10 @@ namespace SonyBraviaEpi
 
         public override bool CustomActivate()
         {
-            AddMcMessengers();
-
             return base.CustomActivate();
         }
 
-        private void AddMcMessengers()
+        protected override void CreateMobileControlMessengers()
         {
             var mc = DeviceManager.AllDevices.OfType<IMobileControl>().FirstOrDefault();
 
