@@ -9,15 +9,15 @@ using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Devices.Displays;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Serilog.Events;
 using TwoWayDisplayBase = PepperDash.Essentials.Devices.Common.Displays.TwoWayDisplayBase;
 
-namespace SonyBraviaEpi
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
         IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
@@ -25,9 +25,6 @@ namespace SonyBraviaEpi
         IBasicVolumeWithFeedbackAdvanced,
         IHasPowerControlWithFeedback,
         IRoutingSinkWithSwitchingWithInputPort
-#if SERIES4
-        , IHasInputs<string, string>
-#endif
     {
         private const long pollTime = 2000;
         private readonly IBasicCommunication _coms;
@@ -109,9 +106,6 @@ namespace SonyBraviaEpi
 
                     _queueRs232.Enqueue(new Rs232Response(args.Bytes, ProcessRs232Response));
                 };
-
-                //_coms.BytesReceived += (sender, args) => ProcessRs232Response(args.Bytes);
-
 
                 _powerOnCommand = Rs232Commands.GetPowerOn(_coms, (c) => { });
                 _powerOffCommand = Rs232Commands.GetPowerOff(_coms, (c) => { });
@@ -271,12 +265,10 @@ namespace SonyBraviaEpi
 
         public override bool CustomActivate()
         {
-            AddMcMessengers();
-
             return base.CustomActivate();
         }
 
-        private void AddMcMessengers()
+        protected override void CreateMobileControlMessengers()
         {
             var mc = DeviceManager.AllDevices.OfType<IMobileControl>().FirstOrDefault();
 
@@ -912,11 +904,11 @@ namespace SonyBraviaEpi
             switch (_lastCommand[2])
             {
                 case 0x00: //power
-                    PowerIsOn = Rs232ParsingUtils.ParsePowerResponse(message);
+                    PowerIsOn = message.ParsePowerResponse();
                     PowerIsOnFeedback.FireUpdate();
                     break;
                 case 0x02: //input
-                    _currentInput = Rs232ParsingUtils.ParseInputResponse(message);
+                    _currentInput = message.ParseInputResponse();
                     CurrentInputFeedback.FireUpdate();
 
                     if (Inputs.Items.ContainsKey(_currentInput))
@@ -937,15 +929,15 @@ namespace SonyBraviaEpi
 
                     break;
                 case 0x05: //volume
-                    _rawVolume = Rs232ParsingUtils.ParseVolumeResponse(message);
+                    _rawVolume = message.ParseVolumeResponse();
                     VolumeLevelFeedback.FireUpdate();
                     break;
                 case 0x06: //mute
-                    _muted = Rs232ParsingUtils.ParseMuteResponse(message);
+                    _muted = message.ParseMuteResponse();
                     MuteFeedback.FireUpdate();
                     break;
                 case 0x20: // picture mode
-                    _pictureMode = Rs232ParsingUtils.ParsePictureModeResponse(message);
+                    _pictureMode = message.ParsePictureModeResponse();
                     PictureModeFeedback.FireUpdate();
                     break;
                 default:
@@ -963,7 +955,7 @@ namespace SonyBraviaEpi
                 return;
             }
 
-            Debug.LogMessage(Serilog.Events.LogEventLevel.Information, "Ack: {message}", this, string.Format(consoleMessageFormat, ComTextHelper.GetEscapedText(message)));
+            Debug.LogMessage(LogEventLevel.Information, "Ack: {message}", this, string.Format(consoleMessageFormat, ComTextHelper.GetEscapedText(message)));
         }
 
         private object ProcessSimpleIpResponse(object _)

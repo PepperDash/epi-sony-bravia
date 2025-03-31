@@ -1,8 +1,8 @@
-﻿using System;
-using PepperDash.Core;
+﻿using PepperDash.Core;
 using PepperDash.Essentials.Core.Queues;
+using System;
 
-namespace SonyBraviaEpi
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SimpleIpCommands
     {

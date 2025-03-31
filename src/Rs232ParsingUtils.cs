@@ -1,9 +1,9 @@
-﻿using System;
+﻿using PepperDash.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using PepperDash.Core;
 
-namespace SonyBraviaEpi
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public static class Rs232ParsingUtils
     {

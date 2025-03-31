@@ -1,11 +1,10 @@
-﻿
-using PepperDash.Core;
+﻿using PepperDash.Core;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
 using System;
 using System.Collections.Generic;
 
-namespace SonyBraviaEpi
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaInputs : ISelectableItems<string>
     {
