@@ -24,7 +24,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         IOnline,
         IBasicVolumeWithFeedbackAdvanced,
         IHasPowerControlWithFeedback,
-        IRoutingSinkWithSwitchingWithInputPort
+        IRoutingSinkWithSwitchingWithInputPort,
+        IHasInputs<string>
     {
         private const long pollTime = 2000;
         private readonly IBasicCommunication _coms;
