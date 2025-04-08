@@ -71,6 +71,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private byte maxVolumeLevel = 0xFF;
         private Dictionary<string, ISelectableItem> _defaultInputs;
 
+        private bool _isShuttingDown;
+        private CancellationToken _cancellationToken;
+        private readonly object _shutdownLock = new object();
 
         /// <summary>
         /// Constructor
@@ -120,12 +123,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 var comsGather = new CommunicationGather(_coms, "\x0A");
                 comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
 
-                _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
-                _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
-                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
-                inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
-                volumeQuery = SimpleIpCommands.GetQueryCommand(_coms, "VOLU");
-                muteQuery = SimpleIpCommands.GetQueryCommand(_coms, "AMUT");
+                _cancellationToken = new CancellationToken();
             }
 
             if (CommandQueue == null)
@@ -234,10 +232,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     if (type != eProgramStatusEventType.Stopping)
                         return;
 
+                    lock (_shutdownLock)
+                    {
+                        _isShuttingDown = true;
+                    }
+                    
                     worker?.Abort();
 
                     _pollTimer.Stop();
                     _pollTimer.Dispose();
+                    
+                    if (_queueSimpleIp != null)
+                    {
+                        _queueSimpleIp.Clear();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -975,15 +983,22 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             var seperator = new string('-', 50);
 
-            while (true)
+            while (!_isShuttingDown)
             {
                 try
                 {
-                    var response = _queueSimpleIp.Dequeue();
+                    string response = null;
+                    
+                    // Use TryDequeue with timeout to avoid blocking indefinitely
+                    if (!_queueSimpleIp.TryDequeue(out response, 1000))
+                    {
+                        continue;
+                    }
+                    
                     if (response == null)
                     {
                         Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
-                        return null;
+                        continue;
                     }
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
@@ -1090,8 +1105,19 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                 }
+                catch (ThreadAbortException)
+                {
+                    Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse thread abort received during shutdown");
+                    return null;
+                }
                 catch (Exception ex)
                 {
+                    if (_isShuttingDown)
+                    {
+                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse caught exception during shutdown: {0}", ex.Message);
+                        return null;
+                    }
+                    
                     Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error,
                         "ProcessSimpleIpResponse Exception: {0}", ex.Message);
                     Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error,
@@ -1103,6 +1129,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     Debug.Console(DebugLevels.DebugLevel, this, seperator);
                 }
             }
+            
+            return null;
         }
 
         public void EnqueueCommand(IQueueMessage command)
