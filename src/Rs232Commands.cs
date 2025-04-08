@@ -1,5 +1,7 @@
 ﻿using PepperDash.Core;
+using PepperDash.Core.Logging;
 using PepperDash.Essentials.Core.Queues;
+using Serilog.Events;
 using System;
 using System.Linq;
 
@@ -57,27 +59,19 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             return Convert.ToByte(result > 0xff ? result & 0xFF : result);
         }
 
-        public static byte[] WithChecksum(this byte[] data)
-        {
-            var checksum = data.CalculateChecksum();
-            var newArray = data.ToList();
-            newArray.Add(checksum);
-            return newArray.ToArray();
-        }
-
         public static IQueueMessage GetVolumeQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, VolumeQuery.WithChecksum(), action, eCommandType.VolumeQuery);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeQuery), action, eCommandType.VolumeQuery);
         }
 
         public static IQueueMessage GetVolumeUp(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, VolumeUp.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeUp), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetVolumeDown(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, VolumeDown.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeDown), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetVolumeDirect(IBasicCommunication coms, Action<eCommandType> action, int volume)
@@ -86,114 +80,114 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             {
                 VolumeDirect[5] = 0x00;
 
-                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+                return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeDirect), action, eCommandType.Command);
             }
 
             if (volume > 255)
             {
                 VolumeDirect[5] = 0xFF;
 
-                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+                return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeDirect), action, eCommandType.Command);
             }
 
             VolumeDirect[5] = (byte) volume;
 
-            return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(VolumeDirect), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetMuteQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, MuteQuery.WithChecksum(), action, eCommandType.MuteQuery);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(MuteQuery), action, eCommandType.MuteQuery);
         }
 
         public static IQueueMessage GetMuteOn(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, MuteOn.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(MuteOn), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetMuteOff(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, MuteOff.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(MuteOff), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetPowerOn(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, PowerOn.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(PowerOn), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetPowerOff(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, PowerOff.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(PowerOff), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetPowerQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, PowerQuery.WithChecksum(), action, eCommandType.PowerQuery);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(PowerQuery), action, eCommandType.PowerQuery);
         }
 
         public static IQueueMessage GetHdmi1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputHdmi1.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputHdmi1), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetHdmi2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputHdmi2.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputHdmi2), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetHdmi3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputHdmi3.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputHdmi3), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetHdmi4(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputHdmi4.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputHdmi4), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetHdmi5(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputHdmi5.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputHdmi5), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetVideo1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputVideo1.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputVideo1), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetVideo2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputVideo2.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputVideo2), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetVideo3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputVideo3.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputVideo3), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetComponent1(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputComponent1.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputComponent1), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetComponent2(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputComponent2.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputComponent2), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetComponent3(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputComponent3.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputComponent3), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetPc(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputPc1.WithChecksum(), action, eCommandType.Command);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputPc1), action, eCommandType.Command);
         }
 
         public static IQueueMessage GetInputQuery(IBasicCommunication coms, Action<eCommandType> action)
         {
-            return new Rs232Command(coms, InputQuery.WithChecksum(), action, eCommandType.InputQuery);
+            return new Rs232Command(coms, Rs232ParsingUtils.WithChecksum(InputQuery), action, eCommandType.InputQuery);
         }
         
         /*
@@ -401,7 +395,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             _action(_commandType);
 
-            Debug.Console(DebugLevels.DebugLevel, "Sending command {0}", _message.ToReadableString());
+            Debug.LogMessage(LogEventLevel.Debug, "Sending command {0}", null, _message.ToReadableString());
             _comm.SendBytes(_message);
         }
 

@@ -25,6 +25,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         [JsonProperty("availablePictureModes")]
         public List<SonyBraviaInputConfig> AvailablePictureModes { get; set; } = new List<SonyBraviaInputConfig>();
+
+        [JsonProperty("cresnetId")]
+        public string CresnetId { get; set; }
     }
 
     public class SonyBraviaInputConfig:IKeyName

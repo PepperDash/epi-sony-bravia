@@ -1,7 +1,12 @@
-﻿using PepperDash.Core;
+﻿using Crestron.SimplSharp;
+using PepperDash.Core;
+using PepperDash.Core.Logging;
+using PepperDash.Essentials.Core;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace PepperDash.Essentials.Plugins.SonyBravia
 {
@@ -37,85 +42,99 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         };
         private const byte Header = 0x70;
 
+        public static byte[] WithChecksum(this byte[] command)
+        {
+            if (command == null)
+            {
+                throw new ArgumentNullException("command");
+            }
+
+            var checksum = 0;
+            var total = command.Length;
+
+            if (total == 0)
+            {
+                throw new ArgumentOutOfRangeException("command", "command array is empty");
+            }
+
+            for (var i = 0; i < total; i++)
+            {
+                checksum += command[i];
+            }
+
+            var response = new byte[total + 1];
+
+            command.CopyTo(response, 0);
+            response[total] = (byte)(checksum & 0xFF);
+
+            return response;
+        }
+
         public static bool ParsePowerResponse(this byte[] response)
-        {            
-            Debug.Console(DebugLevels.DebugLevel, "ParsePowerResponse response: {0}", ComTextHelper.GetEscapedText(response));
+        {
+            Debug.LogMessage(LogEventLevel.Debug, "ParsePowerResponse response: {Response}", null, ComTextHelper.GetEscapedText(response));
 
-            if (response[2] == 0x00)
+            if (response != null && response.Length >= 5)
             {
-
-                return response[3] == 0x01;                
+                var power = response[4];
+                return power == 0x02;
             }
-
-            if (response[2] == 0x02)
-            {
-                return response[3] != 0x00;                
-            }
-
             return false;
         }
 
         public static string ParseInputResponse(this byte[] response)
         {
-            // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.DebugLevel, "ParseInputResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogMessage(LogEventLevel.Debug, "ParseInputResponse response: {Response}", null, ComTextHelper.GetEscapedText(response));
 
-            //add together the input type byte & the input number byte
-            var inputNumber = response[3] << 8 | response[4];
-
-            string input;
-
-            if(_inputMap.TryGetValue(inputNumber,out input))
+            if (response != null && response.Length >= 8)
             {
-                Debug.Console(DebugLevels.DebugLevel, "Got input {0}", input);
+                var inputType = response[4];
+                var inputNumber = response[5];
+
+                var input = string.Format("{0}{1}", inputType, inputNumber);
+                Debug.LogMessage(LogEventLevel.Debug, "Got input {Input}", null, input);
+
                 return input;
             }
-
-            return input;
+            return string.Empty;
         }
 
         public static int ParseVolumeResponse(this byte[] response)
         {
-            Debug.Console(DebugLevels.DebugLevel, "ParseVolumeResponse response: {0}", ComTextHelper.GetEscapedText(response));
-            //not a direct volume response
-            if (response[3] != 0x01)
-            {
-                return 0;
-            }
+            Debug.LogMessage(LogEventLevel.Debug, "ParseVolumeResponse response: {Response}", null, ComTextHelper.GetEscapedText(response));
 
-            return response[4];
+            if (response != null && response.Length >= 5)
+            {
+                var volume = response[4];
+                return volume;
+            }
+            return 0;
         }
 
-        /// <summary>
-        /// True = isMuted
-        /// </summary>
-        /// <param name="response"></param>
-        /// <returns></returns>
         public static bool ParseMuteResponse(this byte[] response)
         {
-            Debug.Console(DebugLevels.DebugLevel, "ParseMuteResponse response: {0}", ComTextHelper.GetEscapedText(response));
-            //not a direct mute response
-            if (response[3] != 0x01) { return false; }
+            Debug.LogMessage(LogEventLevel.Debug, "ParseMuteResponse response: {Response}", null, ComTextHelper.GetEscapedText(response));
 
-            return response[4] == 0x01;
+            if (response != null && response.Length >= 5)
+            {
+                var mute = response[4];
+                return mute == 0x01;
+            }
+            return false;
         }
+
         public static string ParsePictureModeResponse(this byte[] response)
         {
-            // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.DebugLevel, "ParsePictureModeResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogMessage(LogEventLevel.Debug, "ParsePictureModeResponse response: {Response}", null, ComTextHelper.GetEscapedText(response));
 
-            //add together the input type byte & the input number byte
-            var pictureModeNumber = response[3] << 8 | response[4];
-
-            string pictureMode;
-
-            if (_pictureModeMap.TryGetValue(pictureModeNumber, out pictureMode))
+            if (response != null && response.Length >= 5)
             {
-                Debug.Console(DebugLevels.DebugLevel, "Got picture mode {0}", pictureMode);
-                return pictureMode;
-            }
+                var pictureMode = response[4];
+                Debug.LogMessage(LogEventLevel.Debug, "Got picture mode {PictureMode}", null, pictureMode);
 
-            return pictureMode;
+                return pictureMode.ToString();
+            }
+            return string.Empty;
         }
 
         public static bool IsComplete(this byte[] message)

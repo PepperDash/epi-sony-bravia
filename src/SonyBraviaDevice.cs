@@ -17,6 +17,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using TwoWayDisplayBase = PepperDash.Essentials.Devices.Common.Displays.TwoWayDisplayBase;
 
+// Add ThreadAbortException for catching thread abort exceptions
+using ThreadAbortException = System.Threading.ThreadAbortException;
+
 namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
@@ -73,7 +76,6 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private Dictionary<string, ISelectableItem> _defaultInputs;
 
         private bool _isShuttingDown;
-        private CancellationToken _cancellationToken;
         private readonly object _shutdownLock = new object();
 
         /// <summary>
@@ -93,10 +95,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             this.LogInformation("Cooling time: {coolingTimeMs} Warming time: {warmingTimeMs}", _coolingTimeMs, _warmingtimeMs);
             this.LogInformation("Config Cooling time: {coolingTimeMs} Warming time: {warmingTimeMs}", props.CoolingTimeMs, props.WarmingTimeMs);
 
-            IQueueMessage powerQuery;
-            IQueueMessage inputQuery;
-            IQueueMessage volumeQuery;
-            IQueueMessage muteQuery;
+            IQueueMessage powerQuery = null;
+            IQueueMessage inputQuery = null;
+            IQueueMessage volumeQuery = null;
+            IQueueMessage muteQuery = null;
 
             _coms = comms;
             _comsIsRs232 = !(_coms is ISocketStatus socket) || props.ForceRs232;
@@ -106,7 +108,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 _coms.BytesReceived += (sender, args) =>
                 {
-                    Debug.Console(DebugLevels.DebugLevel, this, "received response: {0}", ComTextHelper.GetEscapedText(args.Bytes));
+                    this.LogDebug("received response: {0}", ComTextHelper.GetEscapedText(args.Bytes));
 
                     _queueRs232.Enqueue(new Rs232Response(args.Bytes, ProcessRs232Response));
                 };
@@ -123,8 +125,6 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _queueSimpleIp = new CrestronQueue<string>(50);
                 var comsGather = new CommunicationGather(_coms, "\x0A");
                 comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
-
-                _cancellationToken = new CancellationToken();
             }
 
             if (CommandQueue == null)
@@ -147,62 +147,62 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             {
                 {
                     "hdmi1", _comsIsRs232
-                        ? new SonyBraviaInput("Hdmi1", "HDMI 1", this, Rs232Commands.InputHdmi1.WithChecksum())
+                        ? new SonyBraviaInput("Hdmi1", "HDMI 1", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputHdmi1))
                         : new SonyBraviaInput("Hdmi1", "HDMI 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1))
                 },
                 {
 
                     "hdmi2", _comsIsRs232
-                        ? new SonyBraviaInput("Hdmi2", "HDMI 2", this, Rs232Commands.InputHdmi2.WithChecksum())
+                        ? new SonyBraviaInput("Hdmi2", "HDMI 2", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputHdmi2))
                         : new SonyBraviaInput("Hdmi2", "HDMI 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2))
                 },
                 {
                     "hdmi3", _comsIsRs232
-                        ? new SonyBraviaInput("Hdmi3", "HDMI 3", this, Rs232Commands.InputHdmi3.WithChecksum())
+                        ? new SonyBraviaInput("Hdmi3", "HDMI 3", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputHdmi3))
                         : new SonyBraviaInput("Hdmi3", "HDMI 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3))
                 },
                 {
                     "hdmi4", _comsIsRs232
-                        ? new SonyBraviaInput("Hdmi4", "HDMI 4", this, Rs232Commands.InputHdmi4.WithChecksum())
+                        ? new SonyBraviaInput("Hdmi4", "HDMI 4", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputHdmi4))
                         : new SonyBraviaInput("Hdmi4", "HDMI 4", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4))
                 },
                 {
                     "hdmi5", _comsIsRs232
-                        ? new SonyBraviaInput("Hdmi5", "HDMI 5", this, Rs232Commands.InputHdmi5.WithChecksum())
+                        ? new SonyBraviaInput("Hdmi5", "HDMI 5", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputHdmi5))
                         : new SonyBraviaInput("Hdmi5", "HDMI 5", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5))
                 },
                 {
                     "video1",_comsIsRs232
-                        ? new SonyBraviaInput("video1", "Video 1", this, Rs232Commands.InputVideo1.WithChecksum())
+                        ? new SonyBraviaInput("video1", "Video 1", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputVideo1))
                         : new SonyBraviaInput("video1", "Video 1", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1))
                 },
                 {
                     "video2",_comsIsRs232
-                        ? new SonyBraviaInput("video2", "Video 2", this, Rs232Commands.InputVideo2.WithChecksum())
+                        ? new SonyBraviaInput("video2", "Video 2", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputVideo2))
                         : new SonyBraviaInput("video2", "Video 2", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2))
                 },
                 {
                     "video3", _comsIsRs232
-                        ? new SonyBraviaInput("video3", "Video 3", this, Rs232Commands.InputVideo3.WithChecksum())
+                        ? new SonyBraviaInput("video3", "Video 3", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputVideo3))
                         : new SonyBraviaInput("video3", "Video 3", this, SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3))
                 },
                 {
                     "component1", _comsIsRs232
-                        ?  new SonyBraviaInput("component1", "Component 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                        ?  new SonyBraviaInput("component1", "Component 1", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputComponent1))
                         : new SonyBraviaInput("component1", "Component 1", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1))
                 },
                 {
                     "component2", _comsIsRs232
-                        ?  new SonyBraviaInput("component2", "Component 2", this, Rs232Commands.InputComponent2.WithChecksum())
+                        ?  new SonyBraviaInput("component2", "Component 2", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputComponent2))
                         : new SonyBraviaInput("component2", "Component 2", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2))
                 },
                 {
                     "component3", _comsIsRs232
-                        ?  new SonyBraviaInput("component3", "Component 3", this, Rs232Commands.InputComponent3.WithChecksum())
+                        ?  new SonyBraviaInput("component3", "Component 3", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputComponent3))
                         : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
                 },
                 {
-                    "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                    "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232ParsingUtils.WithChecksum(Rs232Commands.InputComponent1))
                     : new SonyBraviaInput("vga1", "VGA 1", this, empty)
                 }
             };
@@ -250,8 +250,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
-                        ex.Message, ex.StackTrace);
+                    Debug.LogMessage(LogEventLevel.Error, "Caught an exception at program stop: {0}{1}", this, ex.Message, ex.StackTrace);
                 }
             };
         }
@@ -266,8 +265,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             catch (Exception ex)
             {
-                Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
-                    ex.Message, ex.StackTrace);
+                Debug.LogMessage(LogEventLevel.Error, "Caught an exception at AllDevicesActivated: {0}{1}", this, ex.Message, ex.StackTrace);
             }
         }
 
@@ -499,15 +497,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// </summary>
         public void PowerPoll()
         {
-            if (_comsIsRs232)
-            {
-                var command = Rs232Commands.PowerQuery.WithChecksum();
-                _lastCommand = command;
-                _coms.SendBytes(command);
-                _pollTimer.Reset(1000, pollTime);
-                return;
-            }
-            CommandQueue.Enqueue(SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+            var command = Rs232ParsingUtils.WithChecksum(Rs232Commands.PowerQuery);
+            _lastCommand = command;
+            _coms.SendBytes(command);
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -518,13 +510,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             var seperator = new string('*', 50);
 
-            Debug.Console(DebugLevels.TraceLevel, this, seperator);
+            this.LogDebug(seperator);
             foreach (var inputPort in InputPorts)
             {
-                Debug.Console(DebugLevels.TraceLevel, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
+                this.LogDebug("inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
                     inputPort.Key, inputPort.ConnectionType, inputPort.FeedbackMatchObject, inputPort.Port);
             }
-            Debug.Console(DebugLevels.TraceLevel, this, seperator);
+            this.LogDebug(seperator);
         }
 
         private void AddInputRoutingPort(RoutingInputPort input, int port)
@@ -939,7 +931,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                             }
                             else
                             {
-                                Debug.Console(1, this, "Received input {0} which is not in the configured inputs", _currentInput);
+                                this.LogDebug("Received input {0} which is not in the configured inputs", _currentInput);
                             }
                         }
                         break;
@@ -956,14 +948,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         PictureModeFeedback.FireUpdate();
                         break;
                     default:
-                        Debug.Console(1, this, "Unknown response type received: 0x{0:X2}, Data: {1}", 
+                        Debug.LogMessage(LogEventLevel.Debug, "Unknown response type received: 0x{0:X2}, Data: {1}", this, 
                             _lastCommand[2], ComTextHelper.GetEscapedText(message));
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Debug.Console(0, this, "Error parsing message: {0}\nMessage data: {1}", 
+                Debug.LogMessage(LogEventLevel.Error, "Error parsing message: {0}\nMessage data: {1}", this, 
                     ex.Message, ComTextHelper.GetEscapedText(message));
             }
         }
@@ -973,7 +965,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             if (!_ackStringFormats.TryGetValue(message[1], out string consoleMessageFormat))
             {
-                Debug.Console(DebugLevels.DebugLevel, this, "Unknown Response: {0}", ComTextHelper.GetEscapedText(message));
+                this.LogDebug("Unknown Response: {0}", ComTextHelper.GetEscapedText(message));
                 return;
             }
 
@@ -990,20 +982,32 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     string response = null;
                     
-                    // Use TryDequeue with timeout to avoid blocking indefinitely
-                    if (!_queueSimpleIp.TryDequeue(out response, 1000))
+                    try
                     {
+                        // Use Dequeue with a try-catch as the CrestronQueue doesn't have TryDequeue
+                        response = _queueSimpleIp.Dequeue();
+                    }
+                    catch (Exception)
+                    {
+                        // If we're shutting down, exit the loop
+                        if (_isShuttingDown)
+                        {
+                            return null;
+                        }
+                        
+                        // Sleep a bit before trying again to prevent CPU spinning
+                        CrestronEnvironment.Sleep(500);
                         continue;
                     }
                     
                     if (response == null)
                     {
-                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
+                        this.LogError("ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
                         continue;
                     }
 
-                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: raw '{0}'", response);
+                    this.LogDebug(seperator);
+                    this.LogDebug("ProcessSimpleIpResponse: raw '{0}'", response);
 
                     // http://regexstorm.net/tester
                     // *([A,C,E,N])(?<command>POWR|INPT|VOLU|AMUT)(?<parameters>.[Ff]+|\d+)
@@ -1017,14 +1021,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     if (!matches.Success)
                     {
-                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown response '{0}'", response);
-                        return null;
+                        this.LogVerbose("ProcessSimpleIpResponse: unknown response '{0}'", response);
+                        continue;
                     }
 
                     var type = matches.Groups["type"].Value;
                     var command = matches.Groups["command"].Value;
                     var parameters = matches.Groups["parameters"].Value;
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
+                    this.LogDebug("ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
                         type, command, parameters);
 
                     // display off input response: 
@@ -1037,7 +1041,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         case "POWR":
                             {
                                 PowerIsOn = Convert.ToInt16(parameters) == 1;
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
+                                this.LogDebug("ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
                                 break;
                             }
                         case "INPT":
@@ -1050,7 +1054,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 var inputType = (SimpleIpCommands.InputTypes)Convert.ToInt16(inputParts.ElementAt(0));
                                 var inputNumber = Convert.ToInt16(inputParts.ElementAt(1));
 
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
+                                this.LogDebug("ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
                                     inputType, inputNumber);
 
                                 switch (inputType)
@@ -1092,42 +1096,39 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                                 Inputs.CurrentItem = _currentInput;
 #endif
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _currentInput == '{0}'", _currentInput);
+                                this.LogDebug("ProcessSimpleIpResponse: _currentInput == '{0}'", _currentInput);
 
                                 break;
                             }
                         default:
                             {
-                                Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: unhandled response '{0}' == '{1}'",
+                                this.LogDebug("ProcessSimpleIpResponse: unhandled response '{0}' == '{1}'",
                                     command, parameters);
                                 break;
                             }
                     }
 
-                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
+                    this.LogDebug(seperator);
                 }
                 catch (ThreadAbortException)
                 {
-                    Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse thread abort received during shutdown");
+                    this.LogVerbose("ProcessSimpleIpResponse thread abort received during shutdown");
                     return null;
                 }
                 catch (Exception ex)
                 {
                     if (_isShuttingDown)
                     {
-                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse caught exception during shutdown: {0}", ex.Message);
+                        this.LogVerbose("ProcessSimpleIpResponse caught exception during shutdown: {0}", ex.Message);
                         return null;
                     }
                     
-                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error,
-                        "ProcessSimpleIpResponse Exception: {0}", ex.Message);
-                    Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error,
-                        "ProcessSimpleIpResponse Exception Stack Trace: {0}", ex.StackTrace);
+                    this.LogError("ProcessSimpleIpResponse Exception: {0}", ex.Message);
+                    this.LogDebug("ProcessSimpleIpResponse Exception Stack Trace: {0}", ex.StackTrace);
                     if (ex.InnerException != null)
-                        Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error,
-                            "ProcessSimpleIpResponse Inner Exception: {0}", ex.InnerException);
+                        this.LogError("ProcessSimpleIpResponse Inner Exception: {0}", ex.InnerException);
 
-                    Debug.Console(DebugLevels.DebugLevel, this, seperator);
+                    this.LogDebug(seperator);
                 }
             }
             
@@ -1196,7 +1197,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             var scaledVolume = CrestronEnvironment.ScaleWithLimits(level, 65535, 0, maxVolumeLevel, 0);
 
-            Debug.Console(2, this, "Input level: {0} scaled: {1}", level, scaledVolume);
+            this.LogDebug("Input level: {0} scaled: {1}", level, scaledVolume);
 
             var volumeCommand = Rs232Commands.VolumeDirect;
 
@@ -1219,7 +1220,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         private void SetVolume(int level, bool resetPoll = false)
         {
-            Debug.Console(2, this, "Input level: {0}", level);
+            this.LogDebug("Input level: {0}", level);
 
             var volumeCommand = Rs232Commands.VolumeDirect;
 

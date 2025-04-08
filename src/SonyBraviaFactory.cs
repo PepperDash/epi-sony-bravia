@@ -1,6 +1,10 @@
-﻿using PepperDash.Core;
+﻿using Crestron.SimplSharp;
+using PepperDash.Core;
+using PepperDash.Core.Logging;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Config;
+using Serilog.Events;
+using System;
 using System.Collections.Generic;
 
 namespace PepperDash.Essentials.Plugins.SonyBravia
@@ -9,27 +13,37 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
     {
         public SonyBraviaFactory()
         {
-            TypeNames = new List<string> { "sonybravia", "sonybraviarest", "sonybraviasimpleip" };
-
-            MinimumEssentialsFrameworkVersion = "1.8.5";
+            MinimumEssentialsFrameworkVersion = "1.9.7";
+            TypeNames = new List<string> { "sonybravia", "sonybraviaip", "sonybraviaRS232" };
         }
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)
         {
-            Debug.Console(DebugLevels.TraceLevel, "[{0}] Building {1} plugin instance...", dc.Key, dc.Type);
+            Debug.LogMessage(LogEventLevel.Verbose, "[{Key}] Building {Type} plugin instance...", null, dc.Key, dc.Type);
 
-            var props = dc.Properties.ToObject<SonyBraviaConfig>();
-            if (props == null)
+            try
             {
-                Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin", dc.Key, dc.Type);
+                var props = dc.Properties.ToObject<SonyBraviaConfig>();
+                var cresnetId = props.CresnetId;
+                if (!string.IsNullOrEmpty(cresnetId))
+                {
+                    Debug.LogMessage(LogEventLevel.Verbose, "[{Key}] Failed to build {Type} plugin", null, dc.Key, dc.Type);
+                    return null;
+                }
+
+                var comms = CommFactory.CreateCommForDevice(dc);
+                if (comms == null)
+                {
+                    Debug.LogMessage(LogEventLevel.Verbose, "[{Key}] Failed to build {Type} plugin using {Method}", null, dc.Key, dc.Type, props.Control.Method);
+                    return null;
+                }
+                return new SonyBraviaDevice(dc, comms);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogMessage(LogEventLevel.Error, "Unable to create Sony Bravia device: {0}", null, ex.Message);
                 return null;
             }
-
-            var comms = CommFactory.CreateCommForDevice(dc);
-            if (comms != null) return new SonyBraviaDevice(dc, comms);
-
-            Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin using {2}", dc.Key, dc.Type, props.Control.Method);
-            return null;
         }
     }
 }
