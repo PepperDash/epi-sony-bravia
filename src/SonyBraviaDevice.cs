@@ -900,49 +900,62 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         private void ParseMessage(byte[] message)
         {
-            // 3rd byte is the command type
-            switch (_lastCommand[2])
+            try 
             {
-                case 0x00: //power
-                    PowerIsOn = message.ParsePowerResponse();
-                    PowerIsOnFeedback.FireUpdate();
-                    break;
-                case 0x02: //input
-                    _currentInput = message.ParseInputResponse();
-                    CurrentInputFeedback.FireUpdate();
+                // 3rd byte is the command type
+                switch (_lastCommand[2])
+                {
+                    case 0x00: //power
+                        PowerIsOn = message.ParsePowerResponse();
+                        PowerIsOnFeedback.FireUpdate();
+                        break;
+                    case 0x02: //input
+                        _currentInput = message.ParseInputResponse();
+                        CurrentInputFeedback.FireUpdate();
 
-                    if (Inputs.Items.ContainsKey(_currentInput))
-                    {
-                        foreach (var input in Inputs.Items)
+                        if (!string.IsNullOrEmpty(_currentInput) && Inputs?.Items != null)
                         {
-                            input.Value.IsSelected = input.Key.Equals(_currentInput);
+                            if (Inputs.Items.ContainsKey(_currentInput))
+                            {
+                                foreach (var input in Inputs.Items)
+                                {
+                                    input.Value.IsSelected = input.Key.Equals(_currentInput);
+                                }
+
+                                Inputs.CurrentItem = _currentInput;
+
+                                var inputNumber = message[3] << 8 | message[4];
+                                var routingPort = InputPorts.FirstOrDefault((p) => p.FeedbackMatchObject.Equals(inputNumber));
+                                CurrentInputPort = routingPort;
+                            }
+                            else
+                            {
+                                Debug.Console(1, this, "Received input {0} which is not in the configured inputs", _currentInput);
+                            }
                         }
-                    }
-
-                    Inputs.CurrentItem = _currentInput;
-
-                    var inputNumber = message[3] << 8 | message[4];
-
-                    var routingPort = InputPorts.FirstOrDefault((p) => p.FeedbackMatchObject.Equals(inputNumber));
-
-                    CurrentInputPort = routingPort;
-
-                    break;
-                case 0x05: //volume
-                    _rawVolume = message.ParseVolumeResponse();
-                    VolumeLevelFeedback.FireUpdate();
-                    break;
-                case 0x06: //mute
-                    _muted = message.ParseMuteResponse();
-                    MuteFeedback.FireUpdate();
-                    break;
-                case 0x20: // picture mode
-                    _pictureMode = message.ParsePictureModeResponse();
-                    PictureModeFeedback.FireUpdate();
-                    break;
-                default:
-                    Debug.Console(0, this, "Unknown response received: {0}", ComTextHelper.GetEscapedText(message));
-                    break;
+                        break;
+                    case 0x05: //volume
+                        _rawVolume = message.ParseVolumeResponse();
+                        VolumeLevelFeedback.FireUpdate();
+                        break;
+                    case 0x06: //mute
+                        _muted = message.ParseMuteResponse();
+                        MuteFeedback.FireUpdate();
+                        break;
+                    case 0x20: // picture mode
+                        _pictureMode = message.ParsePictureModeResponse();
+                        PictureModeFeedback.FireUpdate();
+                        break;
+                    default:
+                        Debug.Console(1, this, "Unknown response type received: 0x{0:X2}, Data: {1}", 
+                            _lastCommand[2], ComTextHelper.GetEscapedText(message));
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Console(0, this, "Error parsing message: {0}\nMessage data: {1}", 
+                    ex.Message, ComTextHelper.GetEscapedText(message));
             }
         }
 
