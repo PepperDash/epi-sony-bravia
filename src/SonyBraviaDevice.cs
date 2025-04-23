@@ -1121,6 +1121,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(100, pollTime);
                 return;
             }
+            _muted = true;
+            MuteFeedback.FireUpdate();
 
             CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 0));
             _pollTimer.Reset(100, pollTime);
@@ -1136,7 +1138,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(1000, pollTime);
                 return;
             }
-
+            _muted = false;
+            MuteFeedback.FireUpdate();
             CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 1));
             _pollTimer.Reset(1000, pollTime);
         }
