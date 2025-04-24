@@ -11,7 +11,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             TypeNames = new List<string> { "sonybravia", "sonybraviarest", "sonybraviasimpleip" };
 
-            MinimumEssentialsFrameworkVersion = "1.8.5";
+            MinimumEssentialsFrameworkVersion = "2.4.7";
         }
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)
