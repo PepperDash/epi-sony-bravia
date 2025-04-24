@@ -24,7 +24,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         IOnline,
         IBasicVolumeWithFeedbackAdvanced,
         IHasPowerControlWithFeedback,
-        IRoutingSinkWithSwitchingWithInputPort
+        IRoutingSinkWithSwitchingWithInputPort,
+        IHasInputs<string>
     {
         private const long pollTime = 2000;
         private readonly IBasicCommunication _coms;
@@ -1117,10 +1118,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 var command = Rs232Commands.MuteOn.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
+                _muted = true;
+                MuteFeedback.FireUpdate();
                 _pollTimer.Reset(100, pollTime);
                 return;
             }
-
+            _muted = true;
+            MuteFeedback.FireUpdate();
             CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 0));
             _pollTimer.Reset(100, pollTime);
         }
@@ -1131,11 +1135,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             {
                 var command = Rs232Commands.MuteOff.WithChecksum();
                 _lastCommand = command;
+                _muted = false;
+                MuteFeedback.FireUpdate();
                 _coms.SendBytes(command);
                 _pollTimer.Reset(1000, pollTime);
                 return;
             }
-
+            _muted = false;
+            MuteFeedback.FireUpdate();
             CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 1));
             _pollTimer.Reset(1000, pollTime);
         }
