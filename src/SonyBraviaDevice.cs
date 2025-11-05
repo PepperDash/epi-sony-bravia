@@ -1236,6 +1236,15 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     if (_rawVolume > maxVolumeLevel)
                     {
                         _rawVolume = maxVolumeLevel;
+                        VolumeLevelFeedback.FireUpdate();
+
+                        if(_volumeTimer != null)
+                        {
+                            _volumeTimer.Stop();
+                            _volumeTimer.Dispose();
+                            _volumeTimer = null;
+                        } 
+
                         return;
                     }
                     int increment = 1;
@@ -1252,12 +1261,17 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _rawVolume += increment;
 
+                    if(_rawVolume > maxVolumeLevel)
+                    {
+                        _rawVolume = maxVolumeLevel;
+                    }
+
                     SetVolume(_rawVolume);
 
                     VolumeLevelFeedback.FireUpdate();
 
                     _volumeCounter += 1;
-                }, null, 50, 500);
+                }, null, 0, 500);
 
                 return;
             }
@@ -1290,6 +1304,15 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     if (_rawVolume <= 0) {
                         _rawVolume = 0;
+                        VolumeLevelFeedback.FireUpdate();
+
+                        if (_volumeTimer != null)
+                        {
+                            _volumeTimer.Stop();
+                            _volumeTimer.Dispose();
+                            _volumeTimer = null;
+                        }
+
                         return;
                     }
 
@@ -1307,13 +1330,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _rawVolume -= increment;
 
+                    if (_rawVolume < 0)
+                    {
+                        _rawVolume = 0;
+                    }
+
                     SetVolume(_rawVolume);
 
                     VolumeLevelFeedback.FireUpdate();
 
                     _volumeCounter += 1;
 
-                }, null, 50, 500);
+                }, null, 0, 500);
 
                 return;
             }
