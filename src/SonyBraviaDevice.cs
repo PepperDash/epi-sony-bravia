@@ -226,8 +226,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
             PictureModeFeedback = new StringFeedback(() => _pictureMode);
-            AvailablePictureModes = props.AvailablePictureModes;    
-            
+            AvailablePictureModes = props.AvailablePictureModes;
+
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
                 try
@@ -659,7 +659,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public void InputHdmi4()
         {
             if (_comsIsRs232)
-            {                
+            {
                 var command = Rs232Commands.InputHdmi4.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
@@ -1233,8 +1233,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
-                    if (_rawVolume > maxVolumeLevel) return;
+                    if (_rawVolume > maxVolumeLevel)
+                    {
+                        _rawVolume = maxVolumeLevel;
+                        VolumeLevelFeedback.FireUpdate();
 
+                        if (_volumeTimer != null)
+                        {
+                            _volumeTimer.Stop();
+                            _volumeTimer.Dispose();
+                            _volumeTimer = null;
+                        }
+
+                        return;
+                    }
                     int increment = 1;
 
                     if (_volumeCounter > 4)
@@ -1248,6 +1260,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     }
 
                     _rawVolume += increment;
+
+                    if (_rawVolume > maxVolumeLevel)
+                    {
+                        _rawVolume = maxVolumeLevel;
+                    }
 
                     SetVolume(_rawVolume);
 
@@ -1285,7 +1302,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
-                    if (_rawVolume <= 0) return;
+                    if (_rawVolume <= 0)
+                    {
+                        _rawVolume = 0;
+                        VolumeLevelFeedback.FireUpdate();
+
+                        if (_volumeTimer != null)
+                        {
+                            _volumeTimer.Stop();
+                            _volumeTimer.Dispose();
+                            _volumeTimer = null;
+                        }
+
+                        return;
+                    }
 
                     int increment = 1;
 
@@ -1300,6 +1330,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     }
 
                     _rawVolume -= increment;
+
+                    if (_rawVolume < 0)
+                    {
+                        _rawVolume = 0;
+                    }
 
                     SetVolume(_rawVolume);
 
