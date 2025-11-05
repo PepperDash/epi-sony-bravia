@@ -226,8 +226,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
             PictureModeFeedback = new StringFeedback(() => _pictureMode);
-            AvailablePictureModes = props.AvailablePictureModes;    
-            
+            AvailablePictureModes = props.AvailablePictureModes;
+
             CrestronEnvironment.ProgramStatusEventHandler += type =>
             {
                 try
@@ -659,7 +659,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public void InputHdmi4()
         {
             if (_comsIsRs232)
-            {                
+            {
                 var command = Rs232Commands.InputHdmi4.WithChecksum();
                 _coms.SendBytes(command);
                 _lastCommand = command;
@@ -1238,12 +1238,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         _rawVolume = maxVolumeLevel;
                         VolumeLevelFeedback.FireUpdate();
 
-                        if(_volumeTimer != null)
+                        if (_volumeTimer != null)
                         {
                             _volumeTimer.Stop();
                             _volumeTimer.Dispose();
                             _volumeTimer = null;
-                        } 
+                        }
 
                         return;
                     }
@@ -1261,7 +1261,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _rawVolume += increment;
 
-                    if(_rawVolume > maxVolumeLevel)
+                    if (_rawVolume > maxVolumeLevel)
                     {
                         _rawVolume = maxVolumeLevel;
                     }
@@ -1302,7 +1302,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
-                    if (_rawVolume <= 0) {
+                    if (_rawVolume <= 0)
+                    {
                         _rawVolume = 0;
                         VolumeLevelFeedback.FireUpdate();
 
