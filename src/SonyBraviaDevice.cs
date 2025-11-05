@@ -1233,8 +1233,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
-                    if (_rawVolume > maxVolumeLevel) return;
-
+                    if (_rawVolume > maxVolumeLevel)
+                    {
+                        _rawVolume = maxVolumeLevel;
+                        return;
+                    }
                     int increment = 1;
 
                     if (_volumeCounter > 4)
@@ -1254,7 +1257,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     VolumeLevelFeedback.FireUpdate();
 
                     _volumeCounter += 1;
-                }, null, 0, 500);
+                }, null, 50, 500);
 
                 return;
             }
@@ -1285,7 +1288,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
-                    if (_rawVolume <= 0) return;
+                    if (_rawVolume <= 0) {
+                        _rawVolume = 0;
+                        return;
+                    }
 
                     int increment = 1;
 
@@ -1307,7 +1313,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _volumeCounter += 1;
 
-                }, null, 0, 500);
+                }, null, 50, 500);
 
                 return;
             }
