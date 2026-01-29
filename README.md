@@ -194,3 +194,130 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent3", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputVga1", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ```
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 2.4.7
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "GeneratedKey",
+    "uid": 1,
+    "name": "GeneratedName",
+    "type": "SonyBravia",
+    "group": "Group",
+    "properties": {
+        "CommunicationMonitorProperties": "SampleValue",
+        "Control": "SampleValue",
+        "warmingTimeMs": 0,
+        "coolingTimeMs": 0,
+        "ForceRs232": true,
+        "maxVolumeLevel": "SampleValue",
+        "activeInputs": [
+            {
+                "key": "SampleString",
+                "name": "SampleString"
+            }
+        ],
+        "availablePictureModes": [
+            {
+                "key": "SampleString",
+                "name": "SampleString"
+            }
+        ]
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- ICommunicationMonitor
+- IBridgeAdvanced
+- IInputHdmi1
+- IInputHdmi2
+- IInputHdmi3
+- IInputHdmi4
+- IInputVga1
+- IOnline
+- IBasicVolumeWithFeedbackAdvanced
+- IHasPowerControlWithFeedback
+- IRoutingSinkWithSwitchingWithInputPort
+- IHasInputs<string>
+- IKeyName
+- IQueueMessage
+- ISelectableItems<string>
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- MessengerBase
+- TwoWayDisplayBase
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public void PowerPoll()
+- public void ListRoutingInputPorts()
+- public void BuildInputRoutingPorts()
+- public void InputHdmi1()
+- public void InputHdmi2()
+- public void InputHdmi3()
+- public void InputHdmi4()
+- public void InputHdmi5()
+- public void InputVideo1()
+- public void InputVideo2()
+- public void InputVideo3()
+- public void InputComponent1()
+- public void InputComponent2()
+- public void InputComponent3()
+- public void InputVga1()
+- public void ResetPolling()
+- public void SendRs232Command(byte[] command)
+- public void EnqueueCommand(IQueueMessage command)
+- public void SetInput(string selector)
+- public void MuteOn()
+- public void MuteOff()
+- public void MuteToggle()
+- public void SetVolume(ushort level)
+- public void VolumeUp(bool pressRelease)
+- public void VolumeDown(bool pressRelease)
+- public void PictureModeVivid()
+- public void PictureModeStandard()
+- public void PictureModeCinema()
+- public void PictureModeCinema2()
+- public void PictureModeCustom()
+- public void PictureModeSports()
+- public void PictureModeGame()
+- public void PictureModeGraphics()
+- public void PictureModeToggle()
+- public void Dispatch()
+- public void Dispatch()
+- public void Select()
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- IsOnline
+- MuteFeedback
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+### Int Feedbacks
+
+- VolumeLevelFeedback
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+### String Feedbacks
+
+- PictureModeFeedback
+<!-- END String Feedbacks -->
