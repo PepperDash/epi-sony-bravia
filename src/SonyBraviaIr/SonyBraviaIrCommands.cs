@@ -109,6 +109,15 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             => string.Equals(command, InputToggle, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
+        /// True for a standard command this driver sends. Used so an irCommandMap target that happens
+        /// to be a standard name is never reinterpreted as a label for some other command.
+        /// </summary>
+        public static bool IsKnownCommand(string command)
+            => IsInputCycle(command)
+                || PowerCommands.Any(c => string.Equals(c, command, StringComparison.OrdinalIgnoreCase))
+                || RemoteCommands.Any(c => string.Equals(c, command, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
         /// Resolves an input key to its standard command. Anything else passes through unchanged, so
         /// standard commands and hand-written selectors still reach the IR driver (and its error log).
         /// </summary>

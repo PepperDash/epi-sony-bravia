@@ -27,6 +27,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // the same entry and one lookup in SendIrCommand covers both.
         private readonly Dictionary<string, string> _commandMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        // The reverse of irCommandMap: a file label ("PRIME_VIDEO", "CUSTOM_ON") back to the standard
+        // command it stands for, so a caller passing the label directly is classified the same as one
+        // passing the standard name - for remoteOnly power suppression and for the warm-up replay.
+        private readonly Dictionary<string, string> _labelToStandard = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         private CTimer _warmupTimer;
         private CTimer _cooldownTimer;
 
@@ -91,9 +96,36 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     continue;
                 }
 
-                _commandMap[SonyBraviaIrCommands.Resolve(entry.Key.Trim())] = entry.Value.Trim();
+                var standard = SonyBraviaIrCommands.Resolve(entry.Key.Trim());
+                var target = entry.Value.Trim();
+                _commandMap[standard] = target;
+
+                // A target that is itself a standard command keeps its own meaning (see Classify), and
+                // where several keys share a target (PLAY and PAUSE -> PLAY_PAUSE) the first one wins.
+                if (!_labelToStandard.ContainsKey(target))
+                    _labelToStandard[target] = standard;
             }
         }
+
+        /// <summary>
+        /// What a command is, for power and replay decisions. Identity is the standard command it
+        /// stands for: an input key resolves to its command, and a file label from irCommandMap maps
+        /// back to its key - but never in a way that hides a real standard command. Final is the name
+        /// actually sent. Both are checked, so neither a label nor a map entry can change how a
+        /// command is treated.
+        /// </summary>
+        private (string Identity, string Final) Classify(string cmd)
+        {
+            var standard = SonyBraviaIrCommands.Resolve(cmd);
+            var identity = !SonyBraviaIrCommands.IsKnownCommand(standard) && _labelToStandard.TryGetValue(standard, out var mappedFrom)
+                ? mappedFrom
+                : standard;
+
+            return (identity, MapCommand(identity));
+        }
+
+        private static bool IsCycle((string Identity, string Final) c)
+            => SonyBraviaIrCommands.IsInputCycle(c.Identity) || SonyBraviaIrCommands.IsInputCycle(c.Final);
 
         /// <summary>
         /// Logs, once and at Warning, every command this driver sends that the IR file has no
@@ -153,9 +185,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // selection the warm-up replays, or the replay would undo it with the older one. Input-cycle
             // is relative, so replaying it would step again - it cancels the replay instead. Navigation
             // and volume never touch the replay. Outside warm-up there is nothing to replay.
-            var standard = SonyBraviaIrCommands.Resolve(cmd);
-            var isCycle = SonyBraviaIrCommands.IsInputCycle(standard);
-            if (isCycle || SonyBraviaIrCommands.IsInputSelection(standard))
+            var c = Classify(cmd);
+            var isCycle = IsCycle(c);
+            if (isCycle || SonyBraviaIrCommands.IsInputSelection(c.Identity))
             {
                 lock (_switchLock)
                 {
@@ -172,16 +204,15 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         /// <summary>
         /// Routes a power command to the matching named method and returns true; returns false for
-        /// anything else. Checked before and after mapping, so a map entry can't turn something into
-        /// a power command, or a power command into an unrecognized name, and slip past remoteOnly.
+        /// anything else. Judged on both the identity and the name sent (see Classify), so neither a
+        /// map entry nor a file label passed directly ("CUSTOM_ON") can slip past remoteOnly.
         /// </summary>
         private bool DispatchIfPower(string cmd)
         {
-            var standard = SonyBraviaIrCommands.Resolve(cmd);
-            var mapped = MapCommand(standard);
+            var c = Classify(cmd);
 
-            var power = SonyBraviaIrCommands.IsPowerCommand(standard) ? standard
-                : SonyBraviaIrCommands.IsPowerCommand(mapped) ? mapped
+            var power = SonyBraviaIrCommands.IsPowerCommand(c.Identity) ? c.Identity
+                : SonyBraviaIrCommands.IsPowerCommand(c.Final) ? c.Final
                 : null;
 
             if (power == null) return false;
@@ -207,7 +238,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// </summary>
         private void Transmit(string cmd)
         {
-            var resolved = MapCommand(SonyBraviaIrCommands.Resolve(cmd));
+            var resolved = Classify(cmd).Final;
             if (!string.Equals(resolved, cmd, StringComparison.Ordinal))
                 this.LogVerbose("SendIrCommand: resolved '{selector}' to '{command}'", cmd, resolved);
 
@@ -442,7 +473,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // by the power-on that follows.
             // INPUT_CYCLE is relative: replaying it would step the input again, so it clears the pending
             // selection (neither it nor an older selection replays) instead of becoming it.
-            var isCycle = SonyBraviaIrCommands.IsInputCycle(SonyBraviaIrCommands.Resolve(cmd));
+            var isCycle = IsCycle(Classify(cmd));
 
             lock (_switchLock)
             {
