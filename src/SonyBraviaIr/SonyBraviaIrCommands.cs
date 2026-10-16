@@ -75,6 +75,16 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         };
 
         /// <summary>
+        /// True for the standard power commands, which a remoteOnly device must never send.
+        /// </summary>
+        public static bool IsPowerCommand(string command)
+        {
+            return string.Equals(command, PowerToggle, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(command, PowerOn, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(command, PowerOff, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Resolves an input key to its standard command. Anything else passes through unchanged, so
         /// standard commands and hand-written selectors still reach the IR driver (and its error log).
         /// </summary>

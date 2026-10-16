@@ -24,6 +24,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private CTimer _warmupTimer;
         private CTimer _cooldownTimer;
 
+        // The selection to re-send when warm-up ends. One slot, replaced on each switch, so only the
+        // latest selection replays.
+        private readonly object _switchLock = new object();
+        private string _pendingSwitch;
+
         public ISelectableItems<string> Inputs { get; private set; }
 
         private bool _isWarmingUp;
@@ -84,6 +89,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             if (!string.Equals(resolved, cmd, StringComparison.Ordinal))
                 this.LogVerbose("SendIrCommand: resolved '{selector}' to '{command}'", cmd, resolved);
 
+            // Enforced here as well as in the named power methods: this is the one path every command
+            // takes, so a raw power command (devjson, a bridge, ExecuteSwitch("POWER_OFF")) can't
+            // bypass remoteOnly either.
+            if (SonyBraviaIrCommands.IsPowerCommand(resolved) && SuppressPower($"SendIrCommand '{resolved}'"))
+                return;
+
             this.LogDebug("SendIrCommand: '{command}'", resolved);
 
             _irPort.PressRelease(resolved, true);
@@ -122,12 +133,34 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             IsCoolingDown = false;
             IsWarmingUp = true;
             _warmupTimer?.Stop();
-            _warmupTimer = new CTimer(o => IsWarmingUp = false, WarmupTime);
+            _warmupTimer = new CTimer(o => OnWarmupComplete(), WarmupTime);
+        }
+
+        /// <summary>
+        /// Replays the latest selection made during warm-up, once. Only the warm-up timer calls this,
+        /// so a power-off (which stops the timer and clears the selection) can never trigger it.
+        /// </summary>
+        private void OnWarmupComplete()
+        {
+            string pending;
+            lock (_switchLock)
+            {
+                pending = _pendingSwitch;
+                _pendingSwitch = null;
+            }
+
+            IsWarmingUp = false;
+
+            if (pending != null)
+                SendIrCommand(pending);
         }
 
         public override void PowerOff()
         {
             if (SuppressPower(nameof(PowerOff))) return;
+
+            lock (_switchLock)
+                _pendingSwitch = null;
 
             SendIrCommand(SonyBraviaIrCommands.PowerOff);
 
@@ -216,7 +249,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// <summary>
         /// Sends the input or app command. Unless this device is a remote, it also powers the panel
         /// on and re-sends the command once warm-up ends, because blind IR can't know whether the
-        /// panel was off when the first command went out.
+        /// panel was off when the first command went out. A later switch replaces the pending
+        /// re-send, and a power-off cancels it.
         /// </summary>
         public override void ExecuteSwitch(object selector)
         {
@@ -238,15 +272,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            EventHandler<FeedbackEventArgs> handler = null;
-            handler = (o, a) =>
-            {
-                if (IsWarmingUp) return;
+            lock (_switchLock)
+                _pendingSwitch = cmd;
 
-                IsWarmingUpFeedback.OutputChange -= handler;
-                SendIrCommand(cmd);
-            };
-            IsWarmingUpFeedback.OutputChange += handler;
             PowerOn();
         }
 
