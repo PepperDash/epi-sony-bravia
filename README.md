@@ -81,6 +81,83 @@ Simple IP control is currently **under development**
 }
 ```
 
+## IR Remote Control
+
+The RS232 protocol has no remote-key commands (arrows, keypad, transport, app buttons), so remote control is a
+separate IR device, type `sonyBraviaIr`. It sends Crestron standard command names (`UP_ARROW`, `DN_ARROW`, `HDMI_1`,
+`NETFLIX`, `AMAZON_VIDEO`, ...), and the `.ir` file maps each one to the TV's code. The `.ir` file goes in the
+program's `ir` folder.
+
+It implements `IDPad`, `INumericKeypad`, `ITransport`, `IChannel`, `IColor` and `IHasInputs<string>`. The inputs are
+`hdmi1`–`hdmi4`, `netflix` and `primeVideo`.
+
+### Essentials IR Device Configuration
+
+Usually paired with the RS232 `sonybravia` device as a control-only remote. The RS232 device keeps power, inputs and
+feedback, and this device sends remote keys only:
+
+```json
+{
+    "key": "display-1-ir",
+    "name": "Display Remote",
+    "type": "sonyBraviaIr",
+    "group": "display",
+    "properties": {
+        "remoteOnly": true,
+        "control": {
+            "method": "ir",
+            "controlPortDevKey": "rx-display-1",
+            "controlPortNumber": 1,
+            "irFile": "<Sony Bravia IR file>.ir"
+        }
+    }
+}
+```
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `remoteOnly` | bool | `false` | `true`: never send power, including the power-on an input or app select would otherwise send first. Set it whenever another driver owns the display's power. Leave it `false` only when IR is the display's sole driver. |
+| `warmingTimeMs` | uint | `8000` | Warm-up wait before an input select is re-sent after power-on. Not used when `remoteOnly` is `true`. |
+| `coolingTimeMs` | uint | `8000` | Cool-down time after power-off. |
+| `friendlyNames` | array | `[]` | `{ "inputKey", "name", "hideInput" }` entries that rename or hide inputs. |
+| `irCommandMap` | object | `{}` | Maps a standard command (`"SELECT"`) or input key (`"hdmi1"`) to the name this `.ir` file uses. The target can be a standard command or the file's button label. Keys are case-insensitive. |
+
+`controlPortDevKey` is any device with IR ports, for example the display's NVX receiver, a CEN-IO-IR-104 or the
+processor. Home, Back and Enter have no core interface, so they're exposed as methods for `devjson` only.
+
+### Checking an IR file
+
+IR files don't all use the same names. At startup the device logs one warning listing every command it sends that
+the file has no standard command for, for example:
+
+```
+IR file 'Sony KD46XBR3.ir' has no standard command for: HOME, BACK, GUIDE, ... Those buttons won't work unless irCommandMap maps them to names the file uses
+```
+
+Map the ones the file has under another name; the rest have no code in the file.
+
+For example, the `FlatPanelDisplay_Sony_K-55XR50_IR.ir` driver (2025 Bravia, RMF-TX820U remote; included in
+[`src/SonyBraviaIr/`](src/SonyBraviaIr/FlatPanelDisplay_Sony_K-55XR50_IR.ir)) resolves the
+arrows, `SELECT`, `MENU`, `HOME`, `BACK`, `GUIDE`, `HDMI_1`–`4`, `NETFLIX`, volume and channel directly. It has a single
+`PLAY_PAUSE` key, labels Prime Video `PRIME_VIDEO`, and uses `BACK` where other remotes have `EXIT`. The remote has no
+number keys, so leave the keypad off for users (`displayControlsUserGroups.numpad`).
+
+```json
+"irCommandMap": {
+    "PLAY": "PLAY_PAUSE",
+    "PAUSE": "PLAY_PAUSE",
+    "primeVideo": "PRIME_VIDEO",
+    "EXIT": "BACK"
+}
+```
+
+Older files differ more. `Sony KD46XBR3.ir` (2006 Bravia) maps its OK key to `ENTER` rather than `SELECT` and
+labels its HDMI inputs `INPUT_7_(HDMI)`/`INPUT_8_(HDMI)`, so it needs `"SELECT": "ENTER"`, `"hdmi1": "INPUT_7_(HDMI)"`
+and `"hdmi2": "INPUT_8_(HDMI)"`. It has no app, transport or colour keys at all.
+
+To see every name a file contains, set the debug level to verbose (`appdebug:1 2`) and run
+`devjson:1 {"deviceKey":"<key>-ir","methodName":"PrintAvailableCommands","params":[]}`.
+
 ## Device Bridging
 
 ### Essentials Device Bridge Configuration
