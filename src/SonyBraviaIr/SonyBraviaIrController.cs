@@ -34,6 +34,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // latest selection replays.
         private readonly object _switchLock = new object();
         private string _pendingSwitch;
+        private int _warmupGeneration;
 
         public ISelectableItems<string> Inputs { get; private set; }
 
@@ -185,51 +186,61 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             return true;
         }
 
+        // Power, warm-up and the post-warm-up replay all run under _switchLock, each as one unit, so
+        // the commands go out in the order the operations happened and the warming/cooling state
+        // always matches the last command sent. Each warm-up carries a generation; cancelling or
+        // restarting it bumps the generation, so a timer callback that was already waiting for the
+        // lock (stopping a CTimer doesn't cancel a callback in flight) sees it is stale and does nothing.
+
         public override void PowerOn()
         {
             if (SuppressPower(nameof(PowerOn))) return;
 
+            lock (_switchLock)
+                StartPowerOn();
+        }
+
+        // Caller holds _switchLock.
+        private void StartPowerOn()
+        {
             SendIrCommand(SonyBraviaIrCommands.PowerOn);
 
             _cooldownTimer?.Stop();
             IsCoolingDown = false;
             IsWarmingUp = true;
 
-            // Under the lock so a concurrent PowerOff/PowerToggle can't stop the old timer while
-            // this one is being replaced and miss the new one.
-            lock (_switchLock)
-            {
-                _warmupTimer?.Stop();
-                _warmupTimer = new CTimer(o => OnWarmupComplete(), WarmupTime);
-            }
+            var generation = ++_warmupGeneration;
+            _warmupTimer?.Stop();
+            _warmupTimer = new CTimer(o => OnWarmupComplete(generation), WarmupTime);
         }
 
         /// <summary>
-        /// Replays the latest selection made during warm-up, once. Taking the selection and sending
-        /// it happen under the same lock that PowerOff and PowerToggle use to cancel it and send
-        /// their own command, so a replay already in flight either finishes before the power command
-        /// goes out or finds nothing to send - it can never follow a power-off.
+        /// Ends warm-up and replays the latest selection made during it, once - unless a later power
+        /// command superseded this warm-up, in which case it leaves everything to that command.
         /// </summary>
-        private void OnWarmupComplete()
+        private void OnWarmupComplete(int generation)
         {
             lock (_switchLock)
             {
+                if (generation != _warmupGeneration) return;
+
                 var pending = _pendingSwitch;
                 _pendingSwitch = null;
 
                 if (pending != null)
                     SendIrCommand(pending);
-            }
 
-            IsWarmingUp = false;
+                IsWarmingUp = false;
+            }
         }
 
-        // Callers hold _switchLock. Stopping the timer doesn't cancel a callback already running;
-        // clearing the slot under the lock is what stops that one.
-        private void CancelPendingSwitch()
+        // Caller holds _switchLock.
+        private void CancelWarmup()
         {
             _pendingSwitch = null;
+            _warmupGeneration++;
             _warmupTimer?.Stop();
+            IsWarmingUp = false;
         }
 
         public override void PowerOff()
@@ -238,14 +249,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             lock (_switchLock)
             {
-                CancelPendingSwitch();
+                CancelWarmup();
                 SendIrCommand(SonyBraviaIrCommands.PowerOff);
-            }
 
-            IsWarmingUp = false;
-            IsCoolingDown = true;
-            _cooldownTimer?.Stop();
-            _cooldownTimer = new CTimer(o => IsCoolingDown = false, CooldownTime);
+                IsCoolingDown = true;
+                _cooldownTimer?.Stop();
+                _cooldownTimer = new CTimer(o => IsCoolingDown = false, CooldownTime);
+            }
         }
 
         public override void PowerToggle()
@@ -256,11 +266,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // power-off: a replay after it could wake the display it just turned off.
             lock (_switchLock)
             {
-                CancelPendingSwitch();
+                CancelWarmup();
                 SendIrCommand(SonyBraviaIrCommands.PowerToggle);
             }
-
-            IsWarmingUp = false;
         }
 
         protected override Func<bool> IsCoolingDownFeedbackFunc => () => IsCoolingDown;
@@ -349,18 +357,22 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            SendIrCommand(cmd);
-
             if (_config.RemoteOnly)
             {
+                SendIrCommand(cmd);
                 this.LogDebug("ExecuteSwitch: remoteOnly is set, skipping the implicit PowerOn and warm-up re-send");
                 return;
             }
 
+            // One unit under the lock - send, store for replay, power on - so a power-off can't land
+            // between storing the selection and powering on, cancel the selection, and then be undone
+            // by the power-on that follows.
             lock (_switchLock)
+            {
+                SendIrCommand(cmd);
                 _pendingSwitch = cmd;
-
-            PowerOn();
+                StartPowerOn();
+            }
         }
 
         #endregion
