@@ -81,6 +81,49 @@ Simple IP control is currently **under development**
 }
 ```
 
+## IR Remote Control
+
+The RS232 protocol has no remote-key commands (arrows, keypad, transport, app buttons), so remote control is a
+separate IR device, type `sonyBraviaIr`. It sends Crestron standard command names (`UP_ARROW`, `DN_ARROW`, `HDMI_1`,
+`NETFLIX`, `AMAZON_VIDEO`, ...), and the `.ir` file maps each one to the TV's code. The `.ir` file goes in the
+program's `ir` folder.
+
+It implements `IDPad`, `INumericKeypad`, `ITransport`, `IChannel`, `IColor` and `IHasInputs<string>`. The inputs are
+`hdmi1`–`hdmi4`, `netflix` and `primeVideo`.
+
+### Essentials IR Device Configuration
+
+Usually paired with the RS232 `sonybravia` device as a control-only remote. The RS232 device keeps power, inputs and
+feedback, and this device sends remote keys only:
+
+```json
+{
+    "key": "display-1-ir",
+    "name": "Display Remote",
+    "type": "sonyBraviaIr",
+    "group": "display",
+    "properties": {
+        "remoteOnly": true,
+        "control": {
+            "method": "ir",
+            "controlPortDevKey": "rx-display-1",
+            "controlPortNumber": 1,
+            "irFile": "<Sony Bravia IR file>.ir"
+        }
+    }
+}
+```
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `remoteOnly` | bool | `false` | `true`: never send power, including the power-on an input or app select would otherwise send first. Set it whenever another driver owns the display's power. Leave it `false` only when IR is the display's sole driver. |
+| `warmingTimeMs` | uint | `8000` | Warm-up wait before an input select is re-sent after power-on. Not used when `remoteOnly` is `true`. |
+| `coolingTimeMs` | uint | `8000` | Cool-down time after power-off. |
+| `friendlyNames` | array | `[]` | `{ "inputKey", "name", "hideInput" }` entries that rename or hide inputs. |
+
+`controlPortDevKey` is any device with IR ports, for example the display's NVX receiver, a CEN-IO-IR-104 or the
+processor. Home, Back and Enter have no core interface, so they're exposed as methods for `devjson` only.
+
 ## Device Bridging
 
 ### Essentials Device Bridge Configuration
