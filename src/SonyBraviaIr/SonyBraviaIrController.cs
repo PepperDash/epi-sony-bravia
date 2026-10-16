@@ -35,6 +35,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private readonly object _switchLock = new object();
         private string _pendingSwitch;
         private int _warmupGeneration;
+        private int _cooldownGeneration;
 
         public ISelectableItems<string> Inputs { get; private set; }
 
@@ -133,9 +134,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         }
 
         /// <summary>
-        /// Sends one IR command as a press and release. Input keys are resolved to their standard
-        /// command here, so every caller - including ExecuteSwitch with a raw Inputs key - goes
-        /// through the same mapping.
+        /// Sends one command by name: an input key, a standard command or a name from irCommandMap.
+        /// Power commands are routed to PowerOn/PowerOff/PowerToggle rather than sent directly, so a
+        /// raw power command from devjson or a bridge gets the same remoteOnly suppression and
+        /// warm-up/replay handling as the named methods.
         /// </summary>
         public void SendIrCommand(string cmd)
         {
@@ -145,18 +147,51 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
+            if (DispatchIfPower(cmd)) return;
+
+            Transmit(cmd);
+        }
+
+        /// <summary>
+        /// Routes a power command to the matching named method and returns true; returns false for
+        /// anything else. Checked before and after mapping, so a map entry can't turn something into
+        /// a power command, or a power command into an unrecognized name, and slip past remoteOnly.
+        /// </summary>
+        private bool DispatchIfPower(string cmd)
+        {
             var standard = SonyBraviaIrCommands.Resolve(cmd);
-            var resolved = _commandMap.TryGetValue(standard, out var mapped) ? mapped : standard;
+            var mapped = MapCommand(standard);
+
+            var power = SonyBraviaIrCommands.IsPowerCommand(standard) ? standard
+                : SonyBraviaIrCommands.IsPowerCommand(mapped) ? mapped
+                : null;
+
+            if (power == null) return false;
+
+            if (string.Equals(power, SonyBraviaIrCommands.PowerOn, StringComparison.OrdinalIgnoreCase))
+                PowerOn();
+            else if (string.Equals(power, SonyBraviaIrCommands.PowerOff, StringComparison.OrdinalIgnoreCase))
+                PowerOff();
+            else
+                PowerToggle();
+
+            return true;
+        }
+
+        private string MapCommand(string standard)
+        {
+            return _commandMap.TryGetValue(standard, out var mapped) ? mapped : standard;
+        }
+
+        /// <summary>
+        /// Low-level send: resolves and maps the name, then pulses it on the IR port. No power
+        /// handling - callers are the power methods themselves and SendIrCommand after dispatch.
+        /// </summary>
+        private void Transmit(string cmd)
+        {
+            var resolved = MapCommand(SonyBraviaIrCommands.Resolve(cmd));
             if (!string.Equals(resolved, cmd, StringComparison.Ordinal))
                 this.LogVerbose("SendIrCommand: resolved '{selector}' to '{command}'", cmd, resolved);
-
-            // Enforced here as well as in the named power methods: this is the one path every command
-            // takes, so a raw power command (devjson, a bridge, ExecuteSwitch("POWER_OFF")) can't
-            // bypass remoteOnly either. Checked before and after mapping, so a map entry can't turn
-            // something into a power command, or a power command into an unrecognized name.
-            if ((SonyBraviaIrCommands.IsPowerCommand(standard) || SonyBraviaIrCommands.IsPowerCommand(resolved))
-                && SuppressPower($"SendIrCommand '{resolved}'"))
-                return;
 
             this.LogDebug("SendIrCommand: '{command}'", resolved);
 
@@ -203,8 +238,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // Caller holds _switchLock.
         private void StartPowerOn()
         {
-            SendIrCommand(SonyBraviaIrCommands.PowerOn);
+            Transmit(SonyBraviaIrCommands.PowerOn);
 
+            _cooldownGeneration++;
             _cooldownTimer?.Stop();
             IsCoolingDown = false;
             IsWarmingUp = true;
@@ -228,7 +264,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pendingSwitch = null;
 
                 if (pending != null)
-                    SendIrCommand(pending);
+                    Transmit(pending);
 
                 IsWarmingUp = false;
             }
@@ -250,11 +286,24 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             lock (_switchLock)
             {
                 CancelWarmup();
-                SendIrCommand(SonyBraviaIrCommands.PowerOff);
+                Transmit(SonyBraviaIrCommands.PowerOff);
 
                 IsCoolingDown = true;
+                var generation = ++_cooldownGeneration;
                 _cooldownTimer?.Stop();
-                _cooldownTimer = new CTimer(o => IsCoolingDown = false, CooldownTime);
+                _cooldownTimer = new CTimer(o => OnCooldownComplete(generation), CooldownTime);
+            }
+        }
+
+        // Same generation guard as warm-up: a callback from an earlier cool-down that was already
+        // running when it was stopped can't end a newer cool-down early.
+        private void OnCooldownComplete(int generation)
+        {
+            lock (_switchLock)
+            {
+                if (generation != _cooldownGeneration) return;
+
+                IsCoolingDown = false;
             }
         }
 
@@ -267,7 +316,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             lock (_switchLock)
             {
                 CancelWarmup();
-                SendIrCommand(SonyBraviaIrCommands.PowerToggle);
+                Transmit(SonyBraviaIrCommands.PowerToggle);
             }
         }
 
@@ -357,9 +406,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
+            // A power selector is a power command, not an input: route it to the power methods so it
+            // never enters the switch path (which would send it, power on, and queue it for replay).
+            if (DispatchIfPower(cmd)) return;
+
             if (_config.RemoteOnly)
             {
-                SendIrCommand(cmd);
+                Transmit(cmd);
                 this.LogDebug("ExecuteSwitch: remoteOnly is set, skipping the implicit PowerOn and warm-up re-send");
                 return;
             }
@@ -369,7 +422,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // by the power-on that follows.
             lock (_switchLock)
             {
-                SendIrCommand(cmd);
+                Transmit(cmd);
                 _pendingSwitch = cmd;
                 StartPowerOn();
             }
