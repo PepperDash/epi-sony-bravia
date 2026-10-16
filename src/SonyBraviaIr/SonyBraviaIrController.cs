@@ -367,9 +367,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         private void ApplyFriendlyNames()
         {
-            foreach (var item in _config.FriendlyNames)
+            // An explicit null list, or a null entry, is skipped rather than allowed to throw here and
+            // stop the device from being created.
+            foreach (var item in _config.FriendlyNames ?? new List<SonyBraviaIrFriendlyName>())
             {
-                if (string.IsNullOrEmpty(item.InputKey))
+                if (string.IsNullOrEmpty(item?.InputKey))
                 {
                     this.LogWarning("friendlyNames entry has no inputKey; skipping");
                     continue;
