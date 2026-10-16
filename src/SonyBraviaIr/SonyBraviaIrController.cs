@@ -32,6 +32,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // passing the standard name - for remoteOnly power suppression and for the warm-up replay.
         private readonly Dictionary<string, string> _labelToStandard = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        // Every standard command that maps to each label. A label shared by two keys (POWER_ON and HOME
+        // both -> CUSTOM_ON) carries both meanings, so whichever key sends it, it is still treated as power.
+        private readonly Dictionary<string, List<string>> _labelMeanings = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
         private CTimer _warmupTimer;
         private CTimer _cooldownTimer;
 
@@ -104,6 +108,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 // where several keys share a target (PLAY and PAUSE -> PLAY_PAUSE) the first one wins.
                 if (!_labelToStandard.ContainsKey(target))
                     _labelToStandard[target] = standard;
+
+                if (!_labelMeanings.TryGetValue(target, out var meanings))
+                    _labelMeanings[target] = meanings = new List<string>();
+                meanings.Add(standard);
             }
         }
 
@@ -124,8 +132,27 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             return (identity, MapCommand(identity));
         }
 
-        private static bool IsCycle((string Identity, string Final) c)
-            => SonyBraviaIrCommands.IsInputCycle(c.Identity) || SonyBraviaIrCommands.IsInputCycle(c.Final);
+        /// <summary>
+        /// Everything a command could mean: its identity, the name sent, and every standard command
+        /// that maps to that name. Power, cycle and input-selection decisions check all of them, so a
+        /// label shared between keys, or a key mapped onto another command's code, can't hide what
+        /// actually goes out (HOME -> NETFLIX is an app selection; HOME -> a power label is power).
+        /// </summary>
+        private IEnumerable<string> Meanings((string Identity, string Final) c)
+        {
+            yield return c.Identity;
+            yield return c.Final;
+
+            if (_labelMeanings.TryGetValue(c.Final, out var meanings))
+                foreach (var m in meanings)
+                    yield return m;
+        }
+
+        private bool IsCycle((string Identity, string Final) c)
+            => Meanings(c).Any(SonyBraviaIrCommands.IsInputCycle);
+
+        private bool IsSelection((string Identity, string Final) c)
+            => Meanings(c).Any(SonyBraviaIrCommands.IsInputSelection);
 
         /// <summary>
         /// Logs, once and at Warning, every command this driver sends that the IR file has no
@@ -187,7 +214,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // and volume never touch the replay. Outside warm-up there is nothing to replay.
             var c = Classify(cmd);
             var isCycle = IsCycle(c);
-            if (isCycle || SonyBraviaIrCommands.IsInputSelection(c.Identity))
+            if (isCycle || IsSelection(c))
             {
                 lock (_switchLock)
                 {
@@ -211,9 +238,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             var c = Classify(cmd);
 
-            var power = SonyBraviaIrCommands.IsPowerCommand(c.Identity) ? c.Identity
-                : SonyBraviaIrCommands.IsPowerCommand(c.Final) ? c.Final
-                : null;
+            var power = Meanings(c).FirstOrDefault(SonyBraviaIrCommands.IsPowerCommand);
 
             if (power == null) return false;
 
