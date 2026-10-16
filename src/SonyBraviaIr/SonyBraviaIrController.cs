@@ -149,6 +149,24 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             if (DispatchIfPower(cmd)) return;
 
+            // A direct input or app selection made during warm-up (devjson, a bridge) must become the
+            // selection the warm-up replays, or the replay would undo it with the older one. Input-cycle
+            // is relative, so replaying it would step again - it cancels the replay instead. Navigation
+            // and volume never touch the replay. Outside warm-up there is nothing to replay.
+            var standard = SonyBraviaIrCommands.Resolve(cmd);
+            var isCycle = SonyBraviaIrCommands.IsInputCycle(standard);
+            if (isCycle || SonyBraviaIrCommands.IsInputSelection(standard))
+            {
+                lock (_switchLock)
+                {
+                    if (IsWarmingUp)
+                        _pendingSwitch = isCycle ? null : cmd;
+
+                    Transmit(cmd);
+                }
+                return;
+            }
+
             Transmit(cmd);
         }
 
@@ -422,10 +440,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             // One unit under the lock - send, store for replay, power on - so a power-off can't land
             // between storing the selection and powering on, cancel the selection, and then be undone
             // by the power-on that follows.
+            // INPUT_CYCLE is relative: replaying it would step the input again, so it clears the pending
+            // selection (neither it nor an older selection replays) instead of becoming it.
+            var isCycle = SonyBraviaIrCommands.IsInputCycle(SonyBraviaIrCommands.Resolve(cmd));
+
             lock (_switchLock)
             {
                 Transmit(cmd);
-                _pendingSwitch = cmd;
+                _pendingSwitch = isCycle ? null : cmd;
                 StartPowerOn();
             }
         }

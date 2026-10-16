@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace PepperDash.Essentials.Plugins.SonyBravia
 {
@@ -93,11 +94,19 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// True for the standard power commands, which a remoteOnly device must never send.
         /// </summary>
         public static bool IsPowerCommand(string command)
-        {
-            return string.Equals(command, PowerToggle, StringComparison.OrdinalIgnoreCase)
+            => string.Equals(command, PowerToggle, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(command, PowerOn, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(command, PowerOff, StringComparison.OrdinalIgnoreCase);
-        }
+
+        /// <summary>
+        /// True for an absolute input or app selection (HDMI_1, NETFLIX, ...) - the commands a warm-up
+        /// replays - as opposed to navigation, volume or the relative INPUT_CYCLE.
+        /// </summary>
+        public static bool IsInputSelection(string command)
+            => InputKeyCommands.Values.Any(c => string.Equals(c, command, StringComparison.OrdinalIgnoreCase));
+
+        public static bool IsInputCycle(string command)
+            => string.Equals(command, InputToggle, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Resolves an input key to its standard command. Anything else passes through unchanged, so
