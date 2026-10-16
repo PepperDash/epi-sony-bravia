@@ -134,18 +134,25 @@ the file has no standard command for, for example:
 IR file 'Sony KD46XBR3.ir' has no standard command for: HOME, BACK, GUIDE, ... Those buttons won't work unless irCommandMap maps them to names the file uses
 ```
 
-Map the ones the file has under another name, and the rest have no code in the file. For example, the
-`Sony KD46XBR3.ir` driver (an older Bravia) maps its OK key to `ENTER` rather than `SELECT`, labels its HDMI inputs
-`INPUT_7_(HDMI)` / `INPUT_8_(HDMI)`, and has no app, transport or colour keys:
+Map the ones the file has under another name; the rest have no code in the file.
+
+For example, the `FlatPanelDisplay_Sony_K-55XR50_IR.ir` driver (2025 Bravia, RMF-TX820U remote) resolves the
+arrows, `SELECT`, `MENU`, `HOME`, `BACK`, `GUIDE`, `HDMI_1`–`4`, `NETFLIX`, volume and channel directly. It has a single
+`PLAY_PAUSE` key, labels Prime Video `PRIME_VIDEO`, and uses `BACK` where other remotes have `EXIT`. The remote has no
+number keys, so leave the keypad off for users (`displayControlsUserGroups.numpad`).
 
 ```json
 "irCommandMap": {
-    "SELECT": "ENTER",
-    "EXIT": "MENU_EXIT",
-    "hdmi1": "INPUT_7_(HDMI)",
-    "hdmi2": "INPUT_8_(HDMI)"
+    "PLAY": "PLAY_PAUSE",
+    "PAUSE": "PLAY_PAUSE",
+    "primeVideo": "PRIME_VIDEO",
+    "EXIT": "BACK"
 }
 ```
+
+Older files differ more. `Sony KD46XBR3.ir` (2006 Bravia) maps its OK key to `ENTER` rather than `SELECT` and
+labels its HDMI inputs `INPUT_7_(HDMI)`/`INPUT_8_(HDMI)`, so it needs `"SELECT": "ENTER"`, `"hdmi1": "INPUT_7_(HDMI)"`
+and `"hdmi2": "INPUT_8_(HDMI)"`. It has no app, transport or colour keys at all.
 
 To see every name a file contains, set the debug level to verbose (`appdebug:1 2`) and run
 `devjson:1 {"deviceKey":"<key>-ir","methodName":"PrintAvailableCommands","params":[]}`.
