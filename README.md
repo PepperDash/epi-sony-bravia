@@ -136,7 +136,8 @@ IR file 'Sony KD46XBR3.ir' has no standard command for: HOME, BACK, GUIDE, ... T
 
 Map the ones the file has under another name; the rest have no code in the file.
 
-For example, the `FlatPanelDisplay_Sony_K-55XR50_IR.ir` driver (2025 Bravia, RMF-TX820U remote) resolves the
+For example, the `FlatPanelDisplay_Sony_K-55XR50_IR.ir` driver (2025 Bravia, RMF-TX820U remote; included in
+[`src/SonyBraviaIr/`](src/SonyBraviaIr/FlatPanelDisplay_Sony_K-55XR50_IR.ir)) resolves the
 arrows, `SELECT`, `MENU`, `HOME`, `BACK`, `GUIDE`, `HDMI_1`–`4`, `NETFLIX`, volume and channel directly. It has a single
 `PLAY_PAUSE` key, labels Prime Video `PRIME_VIDEO`, and uses `BACK` where other remotes have `EXIT`. The remote has no
 number keys, so leave the keypad off for users (`displayControlsUserGroups.numpad`).
