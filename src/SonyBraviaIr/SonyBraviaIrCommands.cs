@@ -75,6 +75,21 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         };
 
         /// <summary>
+        /// Every non-power command the controller sends, checked against the IR file at startup so a
+        /// command the file lacks is reported once instead of failing silently on each press.
+        /// </summary>
+        public static readonly string[] RemoteCommands =
+        {
+            KP0, KP1, KP2, KP3, KP4, KP5, KP6, KP7, KP8, KP9,
+            VolumeUp, VolumeDown, MuteToggle, ChannelUp, ChannelDown, Last, Home, Menu,
+            DpadUp, DpadDown, DpadLeft, DpadRight, DpadSelect, Enter, Back, Exit, Guide, Info,
+            InputHdmi1, InputHdmi2, InputHdmi3, InputHdmi4, Netflix, PrimeVideo,
+            FuncRed, FuncGreen, FuncYellow, FuncBlue, Play, Pause, Stop, FastForward, Rewind
+        };
+
+        public static readonly string[] PowerCommands = { PowerToggle, PowerOn, PowerOff };
+
+        /// <summary>
         /// True for the standard power commands, which a remoteOnly device must never send.
         /// </summary>
         public static bool IsPowerCommand(string command)

@@ -120,9 +120,35 @@ feedback, and this device sends remote keys only:
 | `warmingTimeMs` | uint | `8000` | Warm-up wait before an input select is re-sent after power-on. Not used when `remoteOnly` is `true`. |
 | `coolingTimeMs` | uint | `8000` | Cool-down time after power-off. |
 | `friendlyNames` | array | `[]` | `{ "inputKey", "name", "hideInput" }` entries that rename or hide inputs. |
+| `irCommandMap` | object | `{}` | Maps a standard command (`"SELECT"`) or input key (`"hdmi1"`) to the name this `.ir` file uses. The target can be a standard command or the file's button label. Keys are case-insensitive. |
 
 `controlPortDevKey` is any device with IR ports, for example the display's NVX receiver, a CEN-IO-IR-104 or the
 processor. Home, Back and Enter have no core interface, so they're exposed as methods for `devjson` only.
+
+### Checking an IR file
+
+IR files don't all use the same names. At startup the device logs one warning listing every command it sends that
+the file has no standard command for, for example:
+
+```
+IR file 'Sony KD46XBR3.ir' has no standard command for: HOME, BACK, GUIDE, ... Those buttons won't work unless irCommandMap maps them to names the file uses
+```
+
+Map the ones the file has under another name, and the rest have no code in the file. For example, the
+`Sony KD46XBR3.ir` driver (an older Bravia) maps its OK key to `ENTER` rather than `SELECT`, labels its HDMI inputs
+`INPUT_7_(HDMI)` / `INPUT_8_(HDMI)`, and has no app, transport or colour keys:
+
+```json
+"irCommandMap": {
+    "SELECT": "ENTER",
+    "EXIT": "MENU_EXIT",
+    "hdmi1": "INPUT_7_(HDMI)",
+    "hdmi2": "INPUT_8_(HDMI)"
+}
+```
+
+To see every name a file contains, set the debug level to verbose (`appdebug:1 2`) and run
+`devjson:1 {"deviceKey":"<key>-ir","methodName":"PrintAvailableCommands","params":[]}`.
 
 ## Device Bridging
 

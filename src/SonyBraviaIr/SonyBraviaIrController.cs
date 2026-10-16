@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core.Logging;
@@ -20,6 +22,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
     {
         private readonly SonyBraviaIrConfig _config;
         private readonly IrOutputPortController _irPort;
+
+        // irCommandMap with each key resolved to its standard command, so "hdmi1" and "HDMI_1" are
+        // the same entry and one lookup in SendIrCommand covers both.
+        private readonly Dictionary<string, string> _commandMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         private CTimer _warmupTimer;
         private CTimer _cooldownTimer;
@@ -62,9 +68,62 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             WarmupTime = _config.WarmingTimeMs > 0 ? _config.WarmingTimeMs : 8000;
             CooldownTime = _config.CoolingTimeMs > 0 ? _config.CoolingTimeMs : 8000;
 
+            BuildCommandMap();
+
             SetupInputs();
 
             DeviceManager.AddDevice(_irPort);
+
+            // The port loads its .ir file during its own activation, which runs before this
+            // device's post-activation because the port is added to DeviceManager first.
+            AddPostActivationAction(CheckIrFileCommands);
+        }
+
+        private void BuildCommandMap()
+        {
+            foreach (var entry in _config.IrCommandMap ?? new Dictionary<string, string>())
+            {
+                if (string.IsNullOrWhiteSpace(entry.Key) || string.IsNullOrWhiteSpace(entry.Value))
+                {
+                    this.LogWarning("irCommandMap entry '{key}' -> '{value}' is empty; skipping", entry.Key, entry.Value);
+                    continue;
+                }
+
+                _commandMap[SonyBraviaIrCommands.Resolve(entry.Key.Trim())] = entry.Value.Trim();
+            }
+        }
+
+        /// <summary>
+        /// Logs, once and at Warning, every command this driver sends that the IR file has no
+        /// standard command for. The IR port only reports a missing command per press, at Verbose,
+        /// so without this a mismatched file just looks like dead buttons.
+        /// </summary>
+        private void CheckIrFileCommands()
+        {
+            if (!_irPort.DriverIsLoaded)
+            {
+                this.LogWarning("IR file not loaded; can't check which remote commands it supports");
+                return;
+            }
+
+            var available = new HashSet<string>(_irPort.IrFileCommands ?? new string[0], StringComparer.OrdinalIgnoreCase);
+            var used = _config.RemoteOnly
+                ? SonyBraviaIrCommands.RemoteCommands
+                : SonyBraviaIrCommands.RemoteCommands.Concat(SonyBraviaIrCommands.PowerCommands);
+
+            // Mapped commands are skipped: a map target can be a button label rather than a
+            // standard command, and labels aren't in this list.
+            var missing = used.Where(c => !_commandMap.ContainsKey(c) && !available.Contains(c)).ToList();
+
+            var file = Path.GetFileName(_irPort.DriverFilepath);
+            if (missing.Count == 0)
+            {
+                this.LogInformation("IR file '{file}' has every command this driver sends", file);
+                return;
+            }
+
+            this.LogWarning("IR file '{file}' has no standard command for: {commands}. Those buttons won't work unless irCommandMap maps them to names the file uses",
+                file, string.Join(", ", missing));
         }
 
         public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
@@ -85,14 +144,17 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            var resolved = SonyBraviaIrCommands.Resolve(cmd);
+            var standard = SonyBraviaIrCommands.Resolve(cmd);
+            var resolved = _commandMap.TryGetValue(standard, out var mapped) ? mapped : standard;
             if (!string.Equals(resolved, cmd, StringComparison.Ordinal))
                 this.LogVerbose("SendIrCommand: resolved '{selector}' to '{command}'", cmd, resolved);
 
             // Enforced here as well as in the named power methods: this is the one path every command
             // takes, so a raw power command (devjson, a bridge, ExecuteSwitch("POWER_OFF")) can't
-            // bypass remoteOnly either.
-            if (SonyBraviaIrCommands.IsPowerCommand(resolved) && SuppressPower($"SendIrCommand '{resolved}'"))
+            // bypass remoteOnly either. Checked before and after mapping, so a map entry can't turn
+            // something into a power command, or a power command into an unrecognized name.
+            if ((SonyBraviaIrCommands.IsPowerCommand(standard) || SonyBraviaIrCommands.IsPowerCommand(resolved))
+                && SuppressPower($"SendIrCommand '{resolved}'"))
                 return;
 
             this.LogDebug("SendIrCommand: '{command}'", resolved);

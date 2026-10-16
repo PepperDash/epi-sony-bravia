@@ -27,6 +27,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // ToObject and taking the device down with it.
         [JsonProperty("remoteOnly", NullValueHandling = NullValueHandling.Ignore)]
         public bool RemoteOnly { get; set; }
+
+        // IR files don't all name things the same way: one maps its OK key to standard ENTER rather
+        // than SELECT, another labels its HDMI inputs INPUT_7_(HDMI). Each entry maps a standard
+        // command ("SELECT") or input key ("hdmi1") to the name this file uses ("ENTER",
+        // "INPUT_7_(HDMI)"). Case-insensitive keys.
+        [JsonProperty("irCommandMap")]
+        public Dictionary<string, string> IrCommandMap { get; set; } = new Dictionary<string, string>();
     }
 
     public class SonyBraviaIrFriendlyName
