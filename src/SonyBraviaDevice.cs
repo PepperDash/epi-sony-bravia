@@ -204,7 +204,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         : new SonyBraviaInput("component3", "Component 3", this,SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3))
                 },
                 {
-                    "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputComponent1.WithChecksum())
+                    "vga1",_comsIsRs232 ? new SonyBraviaInput("vga1", "VGA 1", this, Rs232Commands.InputPc1.WithChecksum())
                     : new SonyBraviaInput("vga1", "VGA 1", this, empty)
                 }
             };
@@ -577,7 +577,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             AddInputRoutingPort(new RoutingInputPort(
                     RoutingPortNames.ComponentIn, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Component,
-                    new Action(InputVideo3), this)
+                    new Action(InputComponent1), this)
             { FeedbackMatchObject = 0x0301 }, 10);
 
             AddInputRoutingPort(new RoutingInputPort(
@@ -788,7 +788,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (!_comsIsRs232) return;
 
-            var command = Rs232Commands.InputComponent1.WithChecksum();
+            var command = Rs232Commands.InputPc1.WithChecksum();
             _coms.SendBytes(command);
             _lastCommand = command;
             return;
