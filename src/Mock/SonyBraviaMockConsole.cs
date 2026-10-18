@@ -55,11 +55,23 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         {
             var parts = (args ?? string.Empty).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            SonyBraviaMockResponder responder;
-            if (parts.Length < 2 || !Responders.TryGetValue(parts[0], out responder))
+            // Mocks can still be registering while the command runs, so read the dictionary under the lock
+            SonyBraviaMockResponder responder = null;
+            string[] keys;
+            lock (RegisterLock)
+            {
+                if (parts.Length >= 1)
+                {
+                    Responders.TryGetValue(parts[0], out responder);
+                }
+
+                keys = Responders.Keys.ToArray();
+            }
+
+            if (parts.Length < 2 || responder == null)
             {
                 CrestronConsole.ConsoleCommandResponse("Usage: {0}\r\nMock displays: {1}\r\n", Usage,
-                    string.Join(", ", Responders.Keys.ToArray()));
+                    string.Join(", ", keys));
                 return;
             }
 
