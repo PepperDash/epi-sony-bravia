@@ -1163,13 +1163,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             Debug.Console(2, this, "Input level: {0} scaled: {1}", level, scaledVolume);
 
-            var volumeCommand = Rs232Commands.VolumeDirect;
-
-            volumeCommand[5] = (byte)scaledVolume;
-
             if (_comsIsRs232)
             {
-                var command = volumeCommand.WithChecksum();
+                var command = Rs232Commands.GetVolumeDirectBytes(scaledVolume);
                 _lastCommand = command;
                 _coms.SendBytes(command);
 
@@ -1186,13 +1182,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             Debug.Console(2, this, "Input level: {0}", level);
 
-            var volumeCommand = Rs232Commands.VolumeDirect;
-
-            volumeCommand[5] = (byte)level;
-
             if (_comsIsRs232)
             {
-                var command = volumeCommand.WithChecksum();
+                var command = Rs232Commands.GetVolumeDirectBytes(level);
                 _lastCommand = command;
                 _coms.SendBytes(command);
 
