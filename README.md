@@ -158,6 +158,42 @@ and `"hdmi2": "INPUT_8_(HDMI)"`. It has no app, transport or colour keys at all.
 To see every name a file contains, set the debug level to verbose (`appdebug:1 2`) and run
 `devjson:1 {"deviceKey":"<key>-ir","methodName":"PrintAvailableCommands","params":[]}`.
 
+## Mock Display (bench testing without hardware)
+
+The `sonybraviamock` type builds the real Sony BRAVIA device on an in-process mock panel that speaks the RS232 protocol. Power, warm-up and cool-down, inputs, volume, mute, picture mode and polling all run through the same code as with real hardware, so the room and the touchpanel behave the same way. To switch an existing display to the mock, change only `type`. Any `control` block is ignored, and `activeInputs`, `availablePictureModes`, `warmingTimeMs` and the other properties work as usual.
+
+```json
+{
+    "key": "display-1",
+    "name": "Display",
+    "type": "sonybraviamock",
+    "group": "display",
+    "properties": {
+        "mock": {                       // optional; these are the defaults
+            "responseDelayMs": 50,      // delay before each reply; keep it under 100
+            "powerOn": false,           // starting power state
+            "input": "hdmi1",           // hdmi1-hdmi5, video1-video3, component1-component3, vga1
+            "volume": 20,               // starting raw volume
+            "maxVolume": 255,           // higher levels answer "over maximum"
+            "muted": false
+        }
+    }
+}
+```
+
+Like a real panel, the mock answers "command cancelled" to everything except power while it is off. Picture mode has no query, so its reply is only an acknowledgement.
+
+Use the `sonymock` console command to make changes at the panel, or to inject faults. The device picks up panel-side changes on its next poll.
+
+```
+sonymock display-1 status
+sonymock display-1 power on|off
+sonymock display-1 input hdmi1|...|vga1
+sonymock display-1 volume <raw level>
+sonymock display-1 mute on|off
+sonymock display-1 fault none|error|silent    // error: answer everything "command cancelled"; silent: stop answering (goes offline)
+```
+
 ## Device Bridging
 
 ### Essentials Device Bridge Configuration
