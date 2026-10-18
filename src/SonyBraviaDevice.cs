@@ -446,7 +446,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(500, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(_powerOnCommand);
+            EnqueueSimpleIpControl("POWR", _powerOnCommand);
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -467,7 +467,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(500, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(_powerOffCommand);
+            EnqueueSimpleIpControl("POWR", _powerOffCommand);
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -1000,7 +1000,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
                         type, command, parameters);
 
-                    // display off input response: 
+                    // The answer to one of our control messages only reports success or failure, not state
+                    if (type == "A" && ConsumeControlAnswer(command))
+                    {
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: control answer for '{0}': '{1}'", command, parameters);
+                        continue;
+                    }
+
+                    // display off input response:
                     // - '*SAINPTFFFFFFFFFFFFFFFF'
                     // - '*SAINPTNNNNNNNNNNNNNNNN'
                     if (parameters.Contains('F') || parameters.Contains('N')) continue;
@@ -1011,6 +1018,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                             {
                                 PowerIsOn = Convert.ToInt16(parameters) == 1;
                                 Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
+                                break;
+                            }
+                        case "VOLU":
+                            {
+                                // Query answer or notification: the volume as a 16-digit decimal
+                                _rawVolume = int.Parse(parameters, NumberStyles.None, CultureInfo.InvariantCulture);
+                                VolumeLevelFeedback.FireUpdate();
+                                break;
+                            }
+                        case "AMUT":
+                            {
+                                // Query answer or notification: last digit 1 = muted, all zeros = not muted
+                                _muted = parameters.EndsWith("1");
+                                MuteFeedback.FireUpdate();
                                 break;
                             }
                         case "INPT":
@@ -1110,6 +1131,39 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             CommandQueue.Enqueue(command);
         }
 
+        // Simple IP answers a control (set) message with sixteen zeros, the same text a query answer uses
+        // for power off, volume 0 or unmuted. Count the control messages sent per FourCC so their
+        // answers can be told apart from query answers and skipped.
+        private readonly Dictionary<string, int> _pendingControlAnswers = new Dictionary<string, int>();
+        private readonly object _pendingControlAnswersLock = new object();
+
+        private void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
+        {
+            lock (_pendingControlAnswersLock)
+            {
+                int count;
+                _pendingControlAnswers.TryGetValue(fourCc, out count);
+                _pendingControlAnswers[fourCc] = count + 1;
+            }
+
+            CommandQueue.Enqueue(command);
+        }
+
+        private bool ConsumeControlAnswer(string fourCc)
+        {
+            lock (_pendingControlAnswersLock)
+            {
+                int count;
+                if (!_pendingControlAnswers.TryGetValue(fourCc, out count) || count == 0)
+                {
+                    return false;
+                }
+
+                _pendingControlAnswers[fourCc] = count - 1;
+                return true;
+            }
+        }
+
 #if SERIES4
         public void SetInput(string selector)
         {
@@ -1137,7 +1191,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             _muted = true;
             MuteFeedback.FireUpdate();
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 0));
+            // AMUT: 1 = mute, 0 = unmute
+            EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 1));
             _pollTimer.Reset(100, pollTime);
         }
 
@@ -1155,7 +1210,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             _muted = false;
             MuteFeedback.FireUpdate();
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 1));
+            EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 0));
             _pollTimer.Reset(1000, pollTime);
         }
         public void MuteToggle()
@@ -1186,7 +1241,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", scaledVolume));
+            EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", scaledVolume));
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -1208,7 +1263,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", level));
+            EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", level));
             _pollTimer.Reset(1000, pollTime);
         }
 
