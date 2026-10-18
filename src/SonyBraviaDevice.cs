@@ -989,8 +989,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     if (!matches.Success)
                     {
+                        // Skip it and keep reading; returning here would end this thread for good
                         Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown response '{0}'", response);
-                        return null;
+                        continue;
                     }
 
                     var type = matches.Groups["type"].Value;
@@ -1025,30 +1026,41 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
                                     inputType, inputNumber);
 
+                                // Use the same input keys and port codes as the RS232 path, so the
+                                // input list and routing feedback match either way
+                                int inputCode;
                                 switch (inputType)
                                 {
                                     case SimpleIpCommands.InputTypes.Hdmi:
                                         {
-                                            _currentInput = inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "hdmi" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0400 | inputNumber;
                                             break;
                                         }
                                     case SimpleIpCommands.InputTypes.Component:
                                         {
-                                            var index = inputNumber + 9;
-                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "component" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0300 | inputNumber;
                                             break;
                                         }
                                     case SimpleIpCommands.InputTypes.Composite:
                                         {
-                                            var index = inputNumber + 6;
-                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "video" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0200 | inputNumber;
                                             break;
                                         }
                                     default:
                                         {
                                             // unknown input type
+                                            inputCode = 0;
                                             break;
                                         }
+                                }
+
+                                if (inputCode != 0)
+                                {
+                                    CurrentInputPort = InputPorts.FirstOrDefault(p => p.FeedbackMatchObject.Equals(inputCode));
+                                    CurrentInputFeedback.FireUpdate();
                                 }
 
 
