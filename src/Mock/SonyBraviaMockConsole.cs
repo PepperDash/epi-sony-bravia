@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Crestron.SimplSharp;
+using PepperDash.Core;
 
 namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
 {
@@ -12,6 +13,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
     {
         private const string Usage =
             "sonymock <deviceKey> status | power on|off | input hdmi1-5|video1-3|component1-3|vga1 | volume <raw> | mute on|off | fault none|error|silent";
+
+        // The console rejects help text over 79 bytes; the full usage prints when the command is run without arguments
+        private const string Help = "Mock Sony display: sonymock <key> status|power|input|volume|mute|fault";
 
         private static readonly Dictionary<string, SonyBraviaMockResponder> Responders =
             new Dictionary<string, SonyBraviaMockResponder>(StringComparer.OrdinalIgnoreCase);
@@ -33,8 +37,16 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
                     return;
                 }
 
-                CrestronConsole.AddNewConsoleCommand(Handle, "sonymock", "Drive a mock Sony BRAVIA display. " + Usage,
-                    ConsoleAccessLevelEnum.AccessOperator);
+                // The console command is a convenience: never let it stop the display from loading
+                try
+                {
+                    CrestronConsole.AddNewConsoleCommand(Handle, "sonymock", Help, ConsoleAccessLevelEnum.AccessOperator);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("Unable to add the sonymock console command: {0}", e.Message);
+                }
+
                 commandAdded = true;
             }
         }
