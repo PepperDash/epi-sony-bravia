@@ -121,6 +121,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 var comsGather = new CommunicationGather(_coms, "\x0A");
                 comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
 
+                // Answers never cross a reconnect, so start matching afresh on every connection change
+                var socketStatus = _coms as ISocketStatus;
+                if (socketStatus != null)
+                {
+                    socketStatus.ConnectionChange += (sender, args) => ResetSimpleIpTracking();
+                }
+
                 _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
                 _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
                 powerQuery = TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
@@ -1150,6 +1157,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         private void RecordSimpleIpSent(string fourCc, bool isControl)
         {
+            // A message sent while disconnected is dropped and will never be answered
+            if (!_coms.IsConnected)
+            {
+                return;
+            }
+
             lock (_unansweredLock)
             {
                 Queue<bool> sent;
@@ -1166,6 +1179,19 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 }
 
                 sent.Enqueue(isControl);
+            }
+        }
+
+        /// <summary>
+        /// Forgets every unanswered message, and any lines from the old connection not yet read,
+        /// so a reply lost to a disconnect can't shift later matches
+        /// </summary>
+        private void ResetSimpleIpTracking()
+        {
+            lock (_unansweredLock)
+            {
+                _unansweredIsControl.Clear();
+                _queueSimpleIp.Clear();
             }
         }
 
