@@ -49,7 +49,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private byte[] _incomingBuffer = { };
 
         private readonly GenericQueue _queueRs232;
-        private readonly CrestronQueue<string> _queueSimpleIp;
+        private readonly CrestronQueue<SimpleIpLine> _queueSimpleIp;
         private string _currentInput;
         private bool _powerIsOn;
         private bool _isCooling;
@@ -117,9 +117,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             else
             {
-                _queueSimpleIp = new CrestronQueue<string>(50);
+                _queueSimpleIp = new CrestronQueue<SimpleIpLine>(50);
                 var comsGather = new CommunicationGather(_coms, "\x0A");
-                comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
+                comsGather.LineReceived += (sender, args) =>
+                    _queueSimpleIp.Enqueue(new SimpleIpLine(CurrentConnectionGeneration(), args.Text));
 
                 // Answers never cross a reconnect, so start matching afresh on every connection change
                 var socketStatus = _coms as ISocketStatus;
@@ -972,14 +973,26 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             while (true)
             {
+                var lockTaken = false;
                 try
                 {
-                    var response = _queueSimpleIp.Dequeue();
-                    if (response == null)
+                    var line = _queueSimpleIp.Dequeue();
+                    if (line == null)
                     {
                         Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
                         return null;
                     }
+
+                    // Match and apply each line under the tracking lock (never while waiting in Dequeue),
+                    // so a connection reset can't land between matching an answer and applying it
+                    System.Threading.Monitor.Enter(_unansweredLock, ref lockTaken);
+                    if (line.Generation != _connectionGeneration)
+                    {
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: dropping '{0}' from a previous connection", line.Text);
+                        continue;
+                    }
+
+                    var response = line.Text;
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: raw '{0}'", response);
@@ -1126,6 +1139,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     Debug.Console(DebugLevels.DebugLevel, this, seperator);
                 }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        System.Threading.Monitor.Exit(_unansweredLock);
+                    }
+                }
             }
         }
 
@@ -1152,15 +1172,25 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         internal void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
         {
+            // Nothing to send (an input with no Simple IP command): record nothing either
+            if (command == null)
+            {
+                return;
+            }
+
             CommandQueue.Enqueue(TrackSimpleIp(fourCc, true, command));
         }
 
-        private void RecordSimpleIpSent(string fourCc, bool isControl)
+        /// <summary>
+        /// Records a message that is about to be sent
+        /// </summary>
+        /// <returns>False if it must not be sent, because too many messages for its FourCC are unanswered</returns>
+        private bool RecordSimpleIpSent(string fourCc, bool isControl)
         {
             // A message sent while disconnected is dropped and will never be answered
             if (!_coms.IsConnected)
             {
-                return;
+                return true;
             }
 
             lock (_unansweredLock)
@@ -1172,13 +1202,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     _unansweredIsControl[fourCc] = sent;
                 }
 
-                // A panel that stopped answering would otherwise grow this forever
+                // Limit outstanding sends rather than drop an entry, which would shift every later match.
+                // At the queue's 500ms pacing this many unanswered means ~16s without a reply; sending
+                // resumes as answers arrive, and a reconnect resets the tracking.
                 if (sent.Count >= MaxUnansweredPerFourCc)
                 {
-                    sent.Dequeue();
+                    Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; not sending another until the panel answers",
+                        sent.Count, fourCc);
+                    return false;
                 }
 
                 sent.Enqueue(isControl);
+                return true;
             }
         }
 
@@ -1192,7 +1227,36 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             {
                 _unansweredIsControl.Clear();
                 _queueSimpleIp.Clear();
+
+                // Lines already read off the queue carry the old generation and are dropped
+                _connectionGeneration++;
             }
+        }
+
+        private int CurrentConnectionGeneration()
+        {
+            lock (_unansweredLock)
+            {
+                return _connectionGeneration;
+            }
+        }
+
+        private int _connectionGeneration;
+
+        /// <summary>
+        /// A received Simple IP line, stamped with the connection it arrived on
+        /// </summary>
+        private class SimpleIpLine
+        {
+            public SimpleIpLine(int generation, string text)
+            {
+                Generation = generation;
+                Text = text;
+            }
+
+            public int Generation { get; private set; }
+
+            public string Text { get; private set; }
         }
 
         /// <summary>
@@ -1211,9 +1275,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private class TrackedSimpleIpMessage : IQueueMessage
         {
             private readonly IQueueMessage _inner;
-            private readonly Action _onSend;
+            private readonly Func<bool> _onSend;
 
-            public TrackedSimpleIpMessage(IQueueMessage inner, Action onSend)
+            public TrackedSimpleIpMessage(IQueueMessage inner, Func<bool> onSend)
             {
                 _inner = inner;
                 _onSend = onSend;
@@ -1221,8 +1285,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             public void Dispatch()
             {
-                _onSend();
-                _inner.Dispatch();
+                if (_onSend())
+                {
+                    _inner.Dispatch();
+                }
             }
         }
 
