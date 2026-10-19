@@ -123,10 +123,10 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
                 _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
-                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
-                inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
-                volumeQuery = SimpleIpCommands.GetQueryCommand(_coms, "VOLU");
-                muteQuery = SimpleIpCommands.GetQueryCommand(_coms, "AMUT");
+                powerQuery = TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+                inputQuery = TrackSimpleIp("INPT", false, SimpleIpCommands.GetQueryCommand(_coms, "INPT"));
+                volumeQuery = TrackSimpleIp("VOLU", false, SimpleIpCommands.GetQueryCommand(_coms, "VOLU"));
+                muteQuery = TrackSimpleIp("AMUT", false, SimpleIpCommands.GetQueryCommand(_coms, "AMUT"));
             }
 
             if (CommandQueue == null)
@@ -499,7 +499,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(1000, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+            CommandQueue.Enqueue(TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR")));
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -618,7 +618,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
         }
 
         /// <summary>
@@ -634,7 +634,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
         }
 
         /// <summary>
@@ -650,7 +650,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
         }
 
         /// <summary>
@@ -666,7 +666,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
         }
 
         /// <summary>
@@ -682,7 +682,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));
         }
 
         /// <summary>
@@ -698,7 +698,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1));
         }
 
         /// <summary>
@@ -714,7 +714,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2));
         }
 
         /// <summary>
@@ -730,7 +730,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3));
         }
 
         /// <summary>
@@ -746,7 +746,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1));
         }
 
         /// <summary>
@@ -762,7 +762,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2));
         }
 
         /// <summary>
@@ -778,7 +778,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3));
         }
 
         /// <summary>
@@ -1001,7 +1001,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         type, command, parameters);
 
                     // The answer to one of our control messages only reports success or failure, not state
-                    if (type == "A" && ConsumeControlAnswer(command))
+                    if (type == "A" && IsAnswerToControl(command))
                     {
                         Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: control answer for '{0}': '{1}'", command, parameters);
                         continue;
@@ -1072,27 +1072,23 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                         }
                                     default:
                                         {
-                                            // unknown input type
+                                            // An input with no port here (TV, screen mirroring): report none rather than
+                                            // keep the previous one. Set acknowledgements never reach this; see IsAnswerToControl.
+                                            _currentInput = string.Empty;
                                             inputCode = 0;
                                             break;
                                         }
                                 }
 
-                                if (inputCode != 0)
-                                {
-                                    CurrentInputPort = InputPorts.FirstOrDefault(p => p.FeedbackMatchObject.Equals(inputCode));
-                                    CurrentInputFeedback.FireUpdate();
-                                }
-
+                                // No match (inputCode 0) clears the port, as the RS232 lookup does
+                                CurrentInputPort = InputPorts.FirstOrDefault(p => p.FeedbackMatchObject.Equals(inputCode));
+                                CurrentInputFeedback.FireUpdate();
 
 #if SERIES4
-                                // No idea if this will work with _currentInput.  It's not clear how the input is determined for IP communication
-                                if (Inputs.Items.ContainsKey(_currentInput))
+                                // Deselect everything when the current input isn't in the list
+                                foreach (var item in Inputs.Items)
                                 {
-                                    foreach (var item in Inputs.Items)
-                                    {
-                                        item.Value.IsSelected = item.Key.Equals(_currentInput);
-                                    }
+                                    item.Value.IsSelected = item.Key.Equals(_currentInput);
                                 }
 
                                 Inputs.CurrentItem = _currentInput;
@@ -1132,35 +1128,75 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         }
 
         // Simple IP answers a control (set) message with sixteen zeros, the same text a query answer uses
-        // for power off, volume 0 or unmuted. Count the control messages sent per FourCC so their
-        // answers can be told apart from query answers and skipped.
-        private readonly Dictionary<string, int> _pendingControlAnswers = new Dictionary<string, int>();
-        private readonly object _pendingControlAnswersLock = new object();
+        // for power off, volume 0, unmuted or the TV input. The panel answers in the order messages were
+        // sent, so record each tracked message as it is sent (query or control) and match every answer
+        // to the oldest unanswered message for its FourCC; answers to controls are then skipped.
+        private const int MaxUnansweredPerFourCc = 32;
+        private readonly Dictionary<string, Queue<bool>> _unansweredIsControl = new Dictionary<string, Queue<bool>>();
+        private readonly object _unansweredLock = new object();
 
-        private void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
+        /// <summary>
+        /// Wraps a Simple IP message so it is recorded at the moment it is actually sent
+        /// </summary>
+        private IQueueMessage TrackSimpleIp(string fourCc, bool isControl, IQueueMessage message)
         {
-            lock (_pendingControlAnswersLock)
-            {
-                int count;
-                _pendingControlAnswers.TryGetValue(fourCc, out count);
-                _pendingControlAnswers[fourCc] = count + 1;
-            }
-
-            CommandQueue.Enqueue(command);
+            return new TrackedSimpleIpMessage(message, () => RecordSimpleIpSent(fourCc, isControl));
         }
 
-        private bool ConsumeControlAnswer(string fourCc)
+        internal void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
         {
-            lock (_pendingControlAnswersLock)
+            CommandQueue.Enqueue(TrackSimpleIp(fourCc, true, command));
+        }
+
+        private void RecordSimpleIpSent(string fourCc, bool isControl)
+        {
+            lock (_unansweredLock)
             {
-                int count;
-                if (!_pendingControlAnswers.TryGetValue(fourCc, out count) || count == 0)
+                Queue<bool> sent;
+                if (!_unansweredIsControl.TryGetValue(fourCc, out sent))
                 {
-                    return false;
+                    sent = new Queue<bool>();
+                    _unansweredIsControl[fourCc] = sent;
                 }
 
-                _pendingControlAnswers[fourCc] = count - 1;
-                return true;
+                // A panel that stopped answering would otherwise grow this forever
+                if (sent.Count >= MaxUnansweredPerFourCc)
+                {
+                    sent.Dequeue();
+                }
+
+                sent.Enqueue(isControl);
+            }
+        }
+
+        /// <summary>
+        /// Matches an answer to the oldest unanswered tracked message for its FourCC
+        /// </summary>
+        /// <returns>True if that message was a control, so the answer carries no state</returns>
+        private bool IsAnswerToControl(string fourCc)
+        {
+            lock (_unansweredLock)
+            {
+                Queue<bool> sent;
+                return _unansweredIsControl.TryGetValue(fourCc, out sent) && sent.Count > 0 && sent.Dequeue();
+            }
+        }
+
+        private class TrackedSimpleIpMessage : IQueueMessage
+        {
+            private readonly IQueueMessage _inner;
+            private readonly Action _onSend;
+
+            public TrackedSimpleIpMessage(IQueueMessage inner, Action onSend)
+            {
+                _inner = inner;
+                _onSend = onSend;
+            }
+
+            public void Dispatch()
+            {
+                _onSend();
+                _inner.Dispatch();
             }
         }
 
