@@ -1158,7 +1158,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // for power off, volume 0, unmuted or the TV input. The panel answers in the order messages were
         // sent, so record each tracked message as it is sent (query or control) and match every answer
         // to the oldest unanswered message for its FourCC; answers to controls are then skipped.
-        private const int MaxUnansweredPerFourCc = 32;
+        // Each command is polled every ~8s, so a silent panel reaches this in about a minute
+        private const int MaxUnansweredPerFourCc = 8;
         private readonly Dictionary<string, Queue<bool>> _unansweredIsControl = new Dictionary<string, Queue<bool>>();
         private readonly object _unansweredLock = new object();
 
@@ -1212,12 +1213,21 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 }
 
                 // Limit outstanding sends rather than drop an entry, which would shift every later match.
-                // At the queue's 500ms pacing this many unanswered means ~16s without a reply; sending
-                // resumes as answers arrive, and a reconnect resets the tracking.
+                // The panel has stopped answering this command; clearing on the same connection would let
+                // late replies match the wrong messages, so reconnect: no reply can follow onto a new
+                // socket, and the disconnect resets the tracking.
                 if (sent.Count >= MaxUnansweredPerFourCc)
                 {
-                    Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; not sending another until the panel answers",
-                        sent.Count, fourCc);
+                    if (!_reconnectingForNoReply)
+                    {
+                        _reconnectingForNoReply = true;
+                        Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; reconnecting to resynchronize",
+                            sent.Count, fourCc);
+
+                        // Off this lock: the socket's status callback takes it during Disconnect
+                        CrestronInvoke.BeginInvoke(o => ReconnectForNoReply());
+                    }
+
                     return;
                 }
 
@@ -1228,6 +1238,36 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         // True while sends are going out on a connection the tracking already belongs to
         private bool _sendConnectionCurrent;
+
+        // True from hitting the unanswered cap until the reconnect it triggers has been started
+        private bool _reconnectingForNoReply;
+
+        /// <summary>
+        /// Drops and reopens the connection after the panel stopped answering, so tracking starts afresh
+        /// </summary>
+        private void ReconnectForNoReply()
+        {
+            try
+            {
+                _coms.Disconnect();
+
+                // In case the status callback hasn't run yet, reset here too; IsConnected is false now
+                OnSimpleIpConnectionChange();
+
+                _coms.Connect();
+            }
+            catch (Exception ex)
+            {
+                Debug.Console(DebugLevels.ErrorLevel, this, "Reconnect after unanswered messages failed: {0}", ex.Message);
+            }
+            finally
+            {
+                lock (_unansweredLock)
+                {
+                    _reconnectingForNoReply = false;
+                }
+            }
+        }
 
         /// <summary>
         /// Socket status changed: on a disconnect, forget everything unanswered so a reply lost with the
