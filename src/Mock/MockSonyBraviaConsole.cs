@@ -7,18 +7,18 @@ using PepperDash.Core;
 namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
 {
     /// <summary>
-    /// "sonymock" console command for driving mock panels by device key
+    /// "mocksony" console command for driving mock panels by device key
     /// </summary>
-    public static class SonyBraviaMockConsole
+    internal static class MockSonyBraviaConsole
     {
         private const string Usage =
-            "sonymock <deviceKey> status | power on|off | input hdmi1-5|video1-3|component1-3|vga1 | volume <raw> | mute on|off | fault none|error|silent";
+            "mocksony <deviceKey> status | power on|off | input hdmi1-5|video1-3|component1-3|vga1 | volume <raw> | mute on|off | fault none|error|silent";
 
         // The console rejects help text over 79 bytes; the full usage prints when the command is run without arguments
-        private const string Help = "Mock Sony display: sonymock <key> status|power|input|volume|mute|fault";
+        private const string Help = "Mock Sony display: mocksony <key> status|power|input|volume|mute|fault";
 
-        private static readonly Dictionary<string, SonyBraviaMockResponder> Responders =
-            new Dictionary<string, SonyBraviaMockResponder>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, MockSonyBraviaResponder> Responders =
+            new Dictionary<string, MockSonyBraviaResponder>(StringComparer.OrdinalIgnoreCase);
 
         private static readonly object RegisterLock = new object();
         private static bool commandAdded;
@@ -26,7 +26,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         /// <summary>
         /// Makes a mock panel reachable from the console, adding the command on first use
         /// </summary>
-        public static void Register(string deviceKey, SonyBraviaMockResponder responder)
+        public static void Register(string deviceKey, MockSonyBraviaResponder responder)
         {
             lock (RegisterLock)
             {
@@ -40,11 +40,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
                 // The console command is a convenience: never let it stop the display from loading
                 try
                 {
-                    CrestronConsole.AddNewConsoleCommand(Handle, "sonymock", Help, ConsoleAccessLevelEnum.AccessOperator);
+                    CrestronConsole.AddNewConsoleCommand(Handle, "mocksony", Help, ConsoleAccessLevelEnum.AccessOperator);
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("Unable to add the sonymock console command: {0}", e.Message);
+                    Debug.LogError("Unable to add the mocksony console command: {0}", e.Message);
                 }
 
                 commandAdded = true;
@@ -56,7 +56,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
             var parts = (args ?? string.Empty).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             // Mocks can still be registering while the command runs, so read the dictionary under the lock
-            SonyBraviaMockResponder responder = null;
+            MockSonyBraviaResponder responder = null;
             string[] keys;
             lock (RegisterLock)
             {
@@ -102,9 +102,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
                 case "fault":
                     ok = arg == "none" || arg == "error" || arg == "silent";
                     if (ok)
-                        responder.Fault = arg == "error" ? SonyBraviaMockFault.Error
-                            : arg == "silent" ? SonyBraviaMockFault.Silent
-                            : SonyBraviaMockFault.None;
+                        responder.Fault = arg == "error" ? MockSonyBraviaFault.Error
+                            : arg == "silent" ? MockSonyBraviaFault.Silent
+                            : MockSonyBraviaFault.None;
                     break;
                 default:
                     ok = false;
