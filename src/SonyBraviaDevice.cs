@@ -49,7 +49,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private byte[] _incomingBuffer = { };
 
         private readonly GenericQueue _queueRs232;
-        private readonly CrestronQueue<string> _queueSimpleIp;
+        private readonly CrestronQueue<SimpleIpLine> _queueSimpleIp;
         private string _currentInput;
         private bool _powerIsOn;
         private bool _isCooling;
@@ -117,16 +117,24 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             else
             {
-                _queueSimpleIp = new CrestronQueue<string>(50);
+                _queueSimpleIp = new CrestronQueue<SimpleIpLine>(50);
                 var comsGather = new CommunicationGather(_coms, "\x0A");
-                comsGather.LineReceived += (sender, args) => _queueSimpleIp.Enqueue(args.Text);
+                comsGather.LineReceived += (sender, args) =>
+                    _queueSimpleIp.Enqueue(new SimpleIpLine(CurrentConnectionGeneration(), args.Text));
+
+                // Answers never cross a reconnect: forget what's unanswered when the connection drops
+                var socketStatus = _coms as ISocketStatus;
+                if (socketStatus != null)
+                {
+                    socketStatus.ConnectionChange += (sender, args) => OnSimpleIpConnectionChange();
+                }
 
                 _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
                 _powerOffCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 0);
-                powerQuery = SimpleIpCommands.GetQueryCommand(_coms, "POWR");
-                inputQuery = SimpleIpCommands.GetQueryCommand(_coms, "INPT");
-                volumeQuery = SimpleIpCommands.GetQueryCommand(_coms, "VOLU");
-                muteQuery = SimpleIpCommands.GetQueryCommand(_coms, "AMUT");
+                powerQuery = TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+                inputQuery = TrackSimpleIp("INPT", false, SimpleIpCommands.GetQueryCommand(_coms, "INPT"));
+                volumeQuery = TrackSimpleIp("VOLU", false, SimpleIpCommands.GetQueryCommand(_coms, "VOLU"));
+                muteQuery = TrackSimpleIp("AMUT", false, SimpleIpCommands.GetQueryCommand(_coms, "AMUT"));
             }
 
             if (CommandQueue == null)
@@ -446,7 +454,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(500, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(_powerOnCommand);
+            EnqueueSimpleIpControl("POWR", _powerOnCommand);
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -467,7 +475,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(500, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(_powerOffCommand);
+            EnqueueSimpleIpControl("POWR", _powerOffCommand);
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -499,7 +507,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _pollTimer.Reset(1000, pollTime);
                 return;
             }
-            CommandQueue.Enqueue(SimpleIpCommands.GetQueryCommand(_coms, "POWR"));
+            CommandQueue.Enqueue(TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR")));
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -618,7 +626,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 1));
         }
 
         /// <summary>
@@ -634,7 +642,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 2));
         }
 
         /// <summary>
@@ -650,7 +658,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 3));
         }
 
         /// <summary>
@@ -666,7 +674,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 4));
         }
 
         /// <summary>
@@ -682,7 +690,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Hdmi, 5));
         }
 
         /// <summary>
@@ -698,7 +706,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 1));
         }
 
         /// <summary>
@@ -714,7 +722,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 2));
         }
 
         /// <summary>
@@ -730,7 +738,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Composite, 3));
         }
 
         /// <summary>
@@ -746,7 +754,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 1));
         }
 
         /// <summary>
@@ -762,7 +770,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 2));
         }
 
         /// <summary>
@@ -778,7 +786,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3));
+            EnqueueSimpleIpControl("INPT", SimpleIpCommands.GetInputCommand(_coms, SimpleIpCommands.InputTypes.Component, 3));
         }
 
         /// <summary>
@@ -965,14 +973,26 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             while (true)
             {
+                var lockTaken = false;
                 try
                 {
-                    var response = _queueSimpleIp.Dequeue();
-                    if (response == null)
+                    var line = _queueSimpleIp.Dequeue();
+                    if (line == null)
                     {
                         Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
                         return null;
                     }
+
+                    // Match and apply each line under the tracking lock (never while waiting in Dequeue),
+                    // so a connection reset can't land between matching an answer and applying it
+                    System.Threading.Monitor.Enter(_unansweredLock, ref lockTaken);
+                    if (line.Generation != _connectionGeneration)
+                    {
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: dropping '{0}' from a previous connection", line.Text);
+                        continue;
+                    }
+
+                    var response = line.Text;
 
                     Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: raw '{0}'", response);
@@ -989,8 +1009,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     if (!matches.Success)
                     {
+                        // Skip it and keep reading; returning here would end this thread for good
                         Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown response '{0}'", response);
-                        return null;
+                        continue;
                     }
 
                     var type = matches.Groups["type"].Value;
@@ -999,7 +1020,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
                         type, command, parameters);
 
-                    // display off input response: 
+                    // The answer to one of our control messages only reports success or failure, not state
+                    if (type == "A" && IsAnswerToControl(command))
+                    {
+                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: control answer for '{0}': '{1}'", command, parameters);
+                        continue;
+                    }
+
+                    // display off input response:
                     // - '*SAINPTFFFFFFFFFFFFFFFF'
                     // - '*SAINPTNNNNNNNNNNNNNNNN'
                     if (parameters.Contains('F') || parameters.Contains('N')) continue;
@@ -1010,6 +1038,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                             {
                                 PowerIsOn = Convert.ToInt16(parameters) == 1;
                                 Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
+                                break;
+                            }
+                        case "VOLU":
+                            {
+                                // Query answer or notification: the volume as a 16-digit decimal
+                                _rawVolume = int.Parse(parameters, NumberStyles.None, CultureInfo.InvariantCulture);
+                                VolumeLevelFeedback.FireUpdate();
+                                break;
+                            }
+                        case "AMUT":
+                            {
+                                // Query answer or notification: last digit 1 = muted, all zeros = not muted
+                                _muted = parameters.EndsWith("1");
+                                MuteFeedback.FireUpdate();
                                 break;
                             }
                         case "INPT":
@@ -1025,41 +1067,48 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
                                     inputType, inputNumber);
 
+                                // Use the same input keys and port codes as the RS232 path, so the
+                                // input list and routing feedback match either way
+                                int inputCode;
                                 switch (inputType)
                                 {
                                     case SimpleIpCommands.InputTypes.Hdmi:
                                         {
-                                            _currentInput = inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "hdmi" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0400 | inputNumber;
                                             break;
                                         }
                                     case SimpleIpCommands.InputTypes.Component:
                                         {
-                                            var index = inputNumber + 9;
-                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "component" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0300 | inputNumber;
                                             break;
                                         }
                                     case SimpleIpCommands.InputTypes.Composite:
                                         {
-                                            var index = inputNumber + 6;
-                                            _currentInput = index.ToString(CultureInfo.InvariantCulture);
+                                            _currentInput = "video" + inputNumber.ToString(CultureInfo.InvariantCulture);
+                                            inputCode = 0x0200 | inputNumber;
                                             break;
                                         }
                                     default:
                                         {
-                                            // unknown input type
+                                            // An input with no port here (TV, screen mirroring): report none rather than
+                                            // keep the previous one. Set acknowledgements never reach this; see IsAnswerToControl.
+                                            _currentInput = string.Empty;
+                                            inputCode = 0;
                                             break;
                                         }
                                 }
 
+                                // No match (inputCode 0) clears the port, as the RS232 lookup does
+                                CurrentInputPort = InputPorts.FirstOrDefault(p => p.FeedbackMatchObject.Equals(inputCode));
+                                CurrentInputFeedback.FireUpdate();
 
 #if SERIES4
-                                // No idea if this will work with _currentInput.  It's not clear how the input is determined for IP communication
-                                if (Inputs.Items.ContainsKey(_currentInput))
+                                // Deselect everything when the current input isn't in the list
+                                foreach (var item in Inputs.Items)
                                 {
-                                    foreach (var item in Inputs.Items)
-                                    {
-                                        item.Value.IsSelected = item.Key.Equals(_currentInput);
-                                    }
+                                    item.Value.IsSelected = item.Key.Equals(_currentInput);
                                 }
 
                                 Inputs.CurrentItem = _currentInput;
@@ -1090,12 +1139,185 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     Debug.Console(DebugLevels.DebugLevel, this, seperator);
                 }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        System.Threading.Monitor.Exit(_unansweredLock);
+                    }
+                }
             }
         }
 
         public void EnqueueCommand(IQueueMessage command)
         {
             CommandQueue.Enqueue(command);
+        }
+
+        // Simple IP answers a control (set) message with sixteen zeros, the same text a query answer uses
+        // for power off, volume 0, unmuted or the TV input. The panel answers in the order messages were
+        // sent, so record each tracked message as it is sent (query or control) and match every answer
+        // to the oldest unanswered message for its FourCC; answers to controls are then skipped.
+        private const int MaxUnansweredPerFourCc = 32;
+        private readonly Dictionary<string, Queue<bool>> _unansweredIsControl = new Dictionary<string, Queue<bool>>();
+        private readonly object _unansweredLock = new object();
+
+        /// <summary>
+        /// Wraps a Simple IP message so it is recorded and sent together, on the connection it goes out on
+        /// </summary>
+        private IQueueMessage TrackSimpleIp(string fourCc, bool isControl, IQueueMessage message)
+        {
+            return new TrackedSimpleIpMessage(() => SendTrackedSimpleIp(fourCc, isControl, message));
+        }
+
+        internal void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
+        {
+            // Nothing to send (an input with no Simple IP command): record nothing either
+            if (command == null)
+            {
+                return;
+            }
+
+            CommandQueue.Enqueue(TrackSimpleIp(fourCc, true, command));
+        }
+
+        /// <summary>
+        /// Checks the connection, records the message and sends it as one step, under the same lock
+        /// that connection resets and answer matching use, so a reset can't fall between them
+        /// </summary>
+        private void SendTrackedSimpleIp(string fourCc, bool isControl, IQueueMessage message)
+        {
+            lock (_unansweredLock)
+            {
+                // Sending while disconnected goes nowhere and would never be answered: drop it
+                if (!_coms.IsConnected)
+                {
+                    _sendConnectionCurrent = false;
+                    return;
+                }
+
+                // First send on a new connection: start matching afresh, even if the disconnect
+                // reset hasn't run yet
+                if (!_sendConnectionCurrent)
+                {
+                    ClearSimpleIpTracking();
+                    _sendConnectionCurrent = true;
+                }
+
+                Queue<bool> sent;
+                if (!_unansweredIsControl.TryGetValue(fourCc, out sent))
+                {
+                    sent = new Queue<bool>();
+                    _unansweredIsControl[fourCc] = sent;
+                }
+
+                // Limit outstanding sends rather than drop an entry, which would shift every later match.
+                // At the queue's 500ms pacing this many unanswered means ~16s without a reply; sending
+                // resumes as answers arrive, and a reconnect resets the tracking.
+                if (sent.Count >= MaxUnansweredPerFourCc)
+                {
+                    Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; not sending another until the panel answers",
+                        sent.Count, fourCc);
+                    return;
+                }
+
+                sent.Enqueue(isControl);
+                message.Dispatch();
+            }
+        }
+
+        // True while sends are going out on a connection the tracking already belongs to
+        private bool _sendConnectionCurrent;
+
+        /// <summary>
+        /// Socket status changed: on a disconnect, forget everything unanswered so a reply lost with the
+        /// connection can't shift later matches. A connect resets nothing here; the first send on the new
+        /// connection does, so entries already recorded on it are never wiped.
+        /// </summary>
+        /// <remarks>
+        /// GenericTcpIpClient raises the disconnect from its socket callback right after arming the
+        /// reconnect timer (AutoReconnectIntervalMs, 5s by default), so this always runs well before
+        /// the next connection exists.
+        /// </remarks>
+        private void OnSimpleIpConnectionChange()
+        {
+            lock (_unansweredLock)
+            {
+                if (_coms.IsConnected)
+                {
+                    return;
+                }
+
+                ClearSimpleIpTracking();
+                _sendConnectionCurrent = false;
+            }
+        }
+
+        /// <summary>
+        /// Forgets every unanswered message, and any lines from the old connection not yet read.
+        /// Call with _unansweredLock held.
+        /// </summary>
+        private void ClearSimpleIpTracking()
+        {
+            _unansweredIsControl.Clear();
+            _queueSimpleIp.Clear();
+
+            // Lines already read off the queue carry the old generation and are dropped
+            _connectionGeneration++;
+        }
+
+        private int CurrentConnectionGeneration()
+        {
+            lock (_unansweredLock)
+            {
+                return _connectionGeneration;
+            }
+        }
+
+        private int _connectionGeneration;
+
+        /// <summary>
+        /// A received Simple IP line, stamped with the connection it arrived on
+        /// </summary>
+        private class SimpleIpLine
+        {
+            public SimpleIpLine(int generation, string text)
+            {
+                Generation = generation;
+                Text = text;
+            }
+
+            public int Generation { get; private set; }
+
+            public string Text { get; private set; }
+        }
+
+        /// <summary>
+        /// Matches an answer to the oldest unanswered tracked message for its FourCC
+        /// </summary>
+        /// <returns>True if that message was a control, so the answer carries no state</returns>
+        private bool IsAnswerToControl(string fourCc)
+        {
+            lock (_unansweredLock)
+            {
+                Queue<bool> sent;
+                return _unansweredIsControl.TryGetValue(fourCc, out sent) && sent.Count > 0 && sent.Dequeue();
+            }
+        }
+
+        private class TrackedSimpleIpMessage : IQueueMessage
+        {
+            private readonly Action _send;
+
+            public TrackedSimpleIpMessage(Action send)
+            {
+                _send = send;
+            }
+
+            public void Dispatch()
+            {
+                _send();
+            }
         }
 
 #if SERIES4
@@ -1125,7 +1347,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             _muted = true;
             MuteFeedback.FireUpdate();
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 0));
+            // AMUT: 1 = mute, 0 = unmute
+            EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 1));
             _pollTimer.Reset(100, pollTime);
         }
 
@@ -1143,7 +1366,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             _muted = false;
             MuteFeedback.FireUpdate();
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "MUTE", 1));
+            EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 0));
             _pollTimer.Reset(1000, pollTime);
         }
         public void MuteToggle()
@@ -1163,13 +1386,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             Debug.Console(2, this, "Input level: {0} scaled: {1}", level, scaledVolume);
 
-            var volumeCommand = Rs232Commands.VolumeDirect;
-
-            volumeCommand[5] = (byte)scaledVolume;
-
             if (_comsIsRs232)
             {
-                var command = volumeCommand.WithChecksum();
+                var command = Rs232Commands.GetVolumeDirectBytes(scaledVolume);
                 _lastCommand = command;
                 _coms.SendBytes(command);
 
@@ -1178,7 +1397,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", scaledVolume));
+            EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", scaledVolume));
             _pollTimer.Reset(1000, pollTime);
         }
 
@@ -1186,13 +1405,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             Debug.Console(2, this, "Input level: {0}", level);
 
-            var volumeCommand = Rs232Commands.VolumeDirect;
-
-            volumeCommand[5] = (byte)level;
-
             if (_comsIsRs232)
             {
-                var command = volumeCommand.WithChecksum();
+                var command = Rs232Commands.GetVolumeDirectBytes(level);
                 _lastCommand = command;
                 _coms.SendBytes(command);
 
@@ -1204,7 +1419,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            CommandQueue.Enqueue(SimpleIpCommands.GetControlCommand(_coms, "VOLM", level));
+            EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", level));
             _pollTimer.Reset(1000, pollTime);
         }
 

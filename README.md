@@ -307,3 +307,195 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent3", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputVga1", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ```
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 2.4.7
+- 2.4.7
+- 2.4.7
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "GeneratedKey",
+    "uid": 1,
+    "name": "GeneratedName",
+    "type": "SonyBravia",
+    "group": "Group",
+    "properties": {
+        "CommunicationMonitorProperties": "SampleValue",
+        "Control": "SampleValue",
+        "warmingTimeMs": 0,
+        "coolingTimeMs": 0,
+        "ForceRs232": true,
+        "maxVolumeLevel": "SampleValue",
+        "activeInputs": [
+            {
+                "key": "SampleString",
+                "name": "SampleString"
+            }
+        ],
+        "availablePictureModes": [
+            {
+                "key": "SampleString",
+                "name": "SampleString"
+            }
+        ]
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- ISelectableItems<string>
+- IKeyName
+- ICommunicationMonitor
+- IBridgeAdvanced
+- IInputHdmi1
+- IInputHdmi2
+- IInputHdmi3
+- IInputHdmi4
+- IInputVga1
+- IOnline
+- IBasicVolumeWithFeedbackAdvanced
+- IHasPowerControlWithFeedback
+- IRoutingSinkWithSwitchingWithInputPort
+- IHasInputs<string>
+- IQueueMessage
+- IBasicCommunication
+- IBasicVolumeControls
+- IDPad
+- INumericKeypad
+- ITransport
+- IChannel
+- IColor
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- MessengerBase
+- TwoWayDisplayBase
+- DisplayBase
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void Select()
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public void PowerPoll()
+- public void ListRoutingInputPorts()
+- public void BuildInputRoutingPorts()
+- public void InputHdmi1()
+- public void InputHdmi2()
+- public void InputHdmi3()
+- public void InputHdmi4()
+- public void InputHdmi5()
+- public void InputVideo1()
+- public void InputVideo2()
+- public void InputVideo3()
+- public void InputComponent1()
+- public void InputComponent2()
+- public void InputComponent3()
+- public void InputVga1()
+- public void ResetPolling()
+- public void SendRs232Command(byte[] command)
+- public void EnqueueCommand(IQueueMessage command)
+- public void Dispatch()
+- public void SetInput(string selector)
+- public void MuteOn()
+- public void MuteOff()
+- public void MuteToggle()
+- public void SetVolume(ushort level)
+- public void VolumeUp(bool pressRelease)
+- public void VolumeDown(bool pressRelease)
+- public void PictureModeVivid()
+- public void PictureModeStandard()
+- public void PictureModeCinema()
+- public void PictureModeCinema2()
+- public void PictureModeCustom()
+- public void PictureModeSports()
+- public void PictureModeGame()
+- public void PictureModeGraphics()
+- public void PictureModeToggle()
+- public void Dispatch()
+- public void Dispatch()
+- public void SetPower(bool on)
+- public bool SetInput(string inputKey)
+- public void SetVolume(int level)
+- public void SetMute(bool muted)
+- public string Describe()
+- public void Connect()
+- public void Disconnect()
+- public void SendText(string text)
+- public void SendBytes(byte[] bytes)
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public void SendIrCommand(string cmd)
+- public void VolumeUp(bool pressRelease)
+- public void VolumeDown(bool pressRelease)
+- public void MuteToggle()
+- public void Up(bool pressRelease)
+- public void Down(bool pressRelease)
+- public void Left(bool pressRelease)
+- public void Right(bool pressRelease)
+- public void Select(bool pressRelease)
+- public void Menu(bool pressRelease)
+- public void Exit(bool pressRelease)
+- public void Digit0(bool pressRelease)
+- public void Digit1(bool pressRelease)
+- public void Digit2(bool pressRelease)
+- public void Digit3(bool pressRelease)
+- public void Digit4(bool pressRelease)
+- public void Digit5(bool pressRelease)
+- public void Digit6(bool pressRelease)
+- public void Digit7(bool pressRelease)
+- public void Digit8(bool pressRelease)
+- public void Digit9(bool pressRelease)
+- public void KeypadAccessoryButton1(bool pressRelease)
+- public void KeypadAccessoryButton2(bool pressRelease)
+- public void Play(bool pressRelease)
+- public void Pause(bool pressRelease)
+- public void Stop(bool pressRelease)
+- public void Rewind(bool pressRelease)
+- public void FFwd(bool pressRelease)
+- public void ChapMinus(bool pressRelease)
+- public void ChapPlus(bool pressRelease)
+- public void Record(bool pressRelease)
+- public void ChannelUp(bool pressRelease)
+- public void ChannelDown(bool pressRelease)
+- public void LastChannel(bool pressRelease)
+- public void Guide(bool pressRelease)
+- public void Info(bool pressRelease)
+- public void Red(bool pressRelease)
+- public void Green(bool pressRelease)
+- public void Yellow(bool pressRelease)
+- public void Blue(bool pressRelease)
+- public void Home(bool pressRelease)
+- public void Back(bool pressRelease)
+- public void Enter(bool pressRelease)
+- public void Select()
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- IsOnline
+- MuteFeedback
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+### Int Feedbacks
+
+- VolumeLevelFeedback
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+### String Feedbacks
+
+- PictureModeFeedback
+<!-- END String Feedbacks -->
