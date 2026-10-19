@@ -228,7 +228,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 ? new CTimer((o) => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum() }), Timeout.Infinite)
                 : new CTimer((o) => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery }), Timeout.Infinite);
 
-            maxVolumeLevel = props.MaxVolumeLevel;
+            // Simple IP VOLU uses the TV's 0-100 volume scale; RS232 keeps its 0-255 default. An explicit
+            // maxVolumeLevel applies to both, for feedback and for outgoing levels alike.
+            maxVolumeLevel = props.MaxVolumeLevel ?? (_comsIsRs232 ? (byte)0xFF : (byte)100);
 
             MuteFeedback = new BoolFeedback(() => _muted);
             VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
