@@ -7,7 +7,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
     /// <summary>
     /// How the mock panel misbehaves, for exercising the device's error paths
     /// </summary>
-    public enum SonyBraviaMockFault
+    internal enum MockSonyBraviaFault
     {
         /// <summary>Answer every command normally</summary>
         None,
@@ -27,7 +27,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
     /// The checksum is the low byte of the sum of every preceding byte. Answer 00 means completed;
     /// 01 over maximum, 02 under minimum, 03 cancelled (e.g. while off), 04 parse error.
     /// </remarks>
-    public class SonyBraviaMockResponder
+    internal class MockSonyBraviaResponder
     {
         private const byte ControlHeader = 0x8C;
         private const byte QueryHeader = 0x83;
@@ -66,9 +66,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         /// <summary>
         /// Creates a responder with the given starting state
         /// </summary>
-        public SonyBraviaMockResponder(SonyBraviaMockOptions options)
+        public MockSonyBraviaResponder(MockSonyBraviaOptions options)
         {
-            options = options ?? new SonyBraviaMockOptions();
+            options = options ?? new MockSonyBraviaOptions();
 
             maxVolume = Math.Max(1, Math.Min(0xFF, options.MaxVolume));
             powerIsOn = options.PowerOn;
@@ -81,7 +81,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         /// <summary>
         /// Current fault mode
         /// </summary>
-        public SonyBraviaMockFault Fault { get; set; }
+        public MockSonyBraviaFault Fault { get; set; }
 
         /// <summary>
         /// Number of bytes in the frame that starts at buffer[0], or 0 if it can't be known yet
@@ -107,7 +107,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
 
             lock (stateLock)
             {
-                if (Fault == SonyBraviaMockFault.Silent)
+                if (Fault == MockSonyBraviaFault.Silent)
                 {
                     return null;
                 }
@@ -124,7 +124,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
                     return null;
                 }
 
-                if (Fault == SonyBraviaMockFault.Error || (function != FunctionPower && !powerIsOn))
+                if (Fault == MockSonyBraviaFault.Error || (function != FunctionPower && !powerIsOn))
                 {
                     return Answer(Cancelled);
                 }
