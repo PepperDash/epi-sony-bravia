@@ -5,12 +5,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
     /// <summary>
     /// Starting state and behavior of the mock panel, from the optional "mock" block in properties
     /// </summary>
-    public class SonyBraviaMockOptions
+    public class MockSonyBraviaOptions
     {
         /// <summary>
         /// Creates the defaults: panel off, HDMI 1, volume 20, 50ms replies
         /// </summary>
-        public SonyBraviaMockOptions()
+        public MockSonyBraviaOptions()
         {
             Input = "hdmi1";
             Volume = 20;

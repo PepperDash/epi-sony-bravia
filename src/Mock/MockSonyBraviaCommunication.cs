@@ -9,17 +9,17 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
 {
     /// <summary>
     /// In-process stand-in for the display's serial port. Frames sent by the device are answered
-    /// by a <see cref="SonyBraviaMockResponder"/> on a separate thread, one at a time and in order,
+    /// by a <see cref="MockSonyBraviaResponder"/> on a separate thread, one at a time and in order,
     /// like replies from a real port.
     /// </summary>
     /// <remarks>
     /// Deliberately not an ISocketStatus: the device treats a comm without socket status as RS232.
     /// </remarks>
-    public class SonyBraviaMockCommunication : IBasicCommunication
+    internal class MockSonyBraviaCommunication : IBasicCommunication
     {
         private static readonly Encoding Latin1 = Encoding.GetEncoding(28591);
 
-        private readonly SonyBraviaMockResponder responder;
+        private readonly MockSonyBraviaResponder responder;
         private readonly GenericQueue replyQueue;
         private readonly int responseDelayMs;
         private readonly object bufferLock = new object();
@@ -28,7 +28,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         /// <summary>
         /// Creates a mock comm whose replies come from the given responder
         /// </summary>
-        public SonyBraviaMockCommunication(string key, SonyBraviaMockResponder responder, int responseDelayMs)
+        public MockSonyBraviaCommunication(string key, MockSonyBraviaResponder responder, int responseDelayMs)
         {
             Key = key;
             this.responder = responder;
@@ -84,7 +84,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
                 rxBuffer.AddRange(bytes);
 
                 int length;
-                while ((length = SonyBraviaMockResponder.FrameLength(rxBuffer)) > 0 && rxBuffer.Count >= length)
+                while ((length = MockSonyBraviaResponder.FrameLength(rxBuffer)) > 0 && rxBuffer.Count >= length)
                 {
                     var frame = rxBuffer.GetRange(0, length).ToArray();
                     rxBuffer.RemoveRange(0, length);

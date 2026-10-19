@@ -11,14 +11,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
     /// bench-tested without a display. A real config switches to the mock by changing only "type";
     /// any "control" block is ignored.
     /// </summary>
-    public class SonyBraviaMockFactory : EssentialsPluginDeviceFactory<SonyBraviaDevice>
+    public class MockSonyBraviaFactory : EssentialsPluginDeviceFactory<SonyBraviaDevice>
     {
         /// <summary>
-        /// Registers the "sonybraviamock" type
+        /// Registers the "mockSonyBravia" type, and "sonybraviamock" as an alias for configs written before the rename
         /// </summary>
-        public SonyBraviaMockFactory()
+        public MockSonyBraviaFactory()
         {
-            TypeNames = new List<string> { "sonybraviamock" };
+            TypeNames = new List<string> { "mockSonyBravia", "sonybraviamock" };
 
             MinimumEssentialsFrameworkVersion = "2.4.7";
         }
@@ -34,14 +34,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
 
             var mockToken = dc.Properties["mock"];
             var options = mockToken != null && mockToken.Type == JTokenType.Object
-                ? mockToken.ToObject<SonyBraviaMockOptions>()
-                : new SonyBraviaMockOptions();
+                ? mockToken.ToObject<MockSonyBraviaOptions>()
+                : new MockSonyBraviaOptions();
 
-            var responder = new SonyBraviaMockResponder(options);
-            var comms = new SonyBraviaMockCommunication(dc.Key + "-mockComm", responder, options.ResponseDelayMs);
+            var responder = new MockSonyBraviaResponder(options);
+            var comms = new MockSonyBraviaCommunication(dc.Key + "-mockComm", responder, options.ResponseDelayMs);
 
-            SonyBraviaMockConsole.Register(dc.Key, responder);
-            Debug.LogInformation("Building mock Sony BRAVIA display '{0}' (no hardware). Console: sonymock {0} status", dc.Key);
+            MockSonyBraviaConsole.Register(dc.Key, responder);
+            Debug.LogInformation("Building mock Sony BRAVIA display '{0}' (no hardware). Console: mocksony {0} status", dc.Key);
 
             return new SonyBraviaDevice(dc, comms);
         }
