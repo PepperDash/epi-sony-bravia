@@ -1303,15 +1303,17 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             _queueSimpleIp.Clear();
 
             // Lines already read off the queue carry the old generation and are dropped
-            _connectionGeneration++;
+            System.Threading.Interlocked.Increment(ref _connectionGeneration);
         }
 
+        /// <summary>
+        /// The generation to stamp on a line as it arrives. Read without the tracking lock: a receive
+        /// callback that waited on the lock could sit through a reset and stamp an old connection's
+        /// line with the new generation.
+        /// </summary>
         private int CurrentConnectionGeneration()
         {
-            lock (_unansweredLock)
-            {
-                return _connectionGeneration;
-            }
+            return System.Threading.Volatile.Read(ref _connectionGeneration);
         }
 
         private int _connectionGeneration;
