@@ -122,11 +122,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 comsGather.LineReceived += (sender, args) =>
                     _queueSimpleIp.Enqueue(new SimpleIpLine(CurrentConnectionGeneration(), args.Text));
 
-                // Answers never cross a reconnect, so start matching afresh on every connection change
+                // Answers never cross a reconnect: forget what's unanswered when the connection drops
                 var socketStatus = _coms as ISocketStatus;
                 if (socketStatus != null)
                 {
-                    socketStatus.ConnectionChange += (sender, args) => ResetSimpleIpTracking();
+                    socketStatus.ConnectionChange += (sender, args) => OnSimpleIpConnectionChange();
                 }
 
                 _powerOnCommand = SimpleIpCommands.GetControlCommand(_coms, "POWR", 1);
@@ -1163,11 +1163,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private readonly object _unansweredLock = new object();
 
         /// <summary>
-        /// Wraps a Simple IP message so it is recorded at the moment it is actually sent
+        /// Wraps a Simple IP message so it is recorded and sent together, on the connection it goes out on
         /// </summary>
         private IQueueMessage TrackSimpleIp(string fourCc, bool isControl, IQueueMessage message)
         {
-            return new TrackedSimpleIpMessage(message, () => RecordSimpleIpSent(fourCc, isControl));
+            return new TrackedSimpleIpMessage(() => SendTrackedSimpleIp(fourCc, isControl, message));
         }
 
         internal void EnqueueSimpleIpControl(string fourCc, IQueueMessage command)
@@ -1182,19 +1182,28 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         }
 
         /// <summary>
-        /// Records a message that is about to be sent
+        /// Checks the connection, records the message and sends it as one step, under the same lock
+        /// that connection resets and answer matching use, so a reset can't fall between them
         /// </summary>
-        /// <returns>False if it must not be sent, because too many messages for its FourCC are unanswered</returns>
-        private bool RecordSimpleIpSent(string fourCc, bool isControl)
+        private void SendTrackedSimpleIp(string fourCc, bool isControl, IQueueMessage message)
         {
-            // A message sent while disconnected is dropped and will never be answered
-            if (!_coms.IsConnected)
-            {
-                return true;
-            }
-
             lock (_unansweredLock)
             {
+                // Sending while disconnected goes nowhere and would never be answered: drop it
+                if (!_coms.IsConnected)
+                {
+                    _sendConnectionCurrent = false;
+                    return;
+                }
+
+                // First send on a new connection: start matching afresh, even if the disconnect
+                // reset hasn't run yet
+                if (!_sendConnectionCurrent)
+                {
+                    ClearSimpleIpTracking();
+                    _sendConnectionCurrent = true;
+                }
+
                 Queue<bool> sent;
                 if (!_unansweredIsControl.TryGetValue(fourCc, out sent))
                 {
@@ -1209,28 +1218,52 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 {
                     Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; not sending another until the panel answers",
                         sent.Count, fourCc);
-                    return false;
+                    return;
                 }
 
                 sent.Enqueue(isControl);
-                return true;
+                message.Dispatch();
+            }
+        }
+
+        // True while sends are going out on a connection the tracking already belongs to
+        private bool _sendConnectionCurrent;
+
+        /// <summary>
+        /// Socket status changed: on a disconnect, forget everything unanswered so a reply lost with the
+        /// connection can't shift later matches. A connect resets nothing here; the first send on the new
+        /// connection does, so entries already recorded on it are never wiped.
+        /// </summary>
+        /// <remarks>
+        /// GenericTcpIpClient raises the disconnect from its socket callback right after arming the
+        /// reconnect timer (AutoReconnectIntervalMs, 5s by default), so this always runs well before
+        /// the next connection exists.
+        /// </remarks>
+        private void OnSimpleIpConnectionChange()
+        {
+            lock (_unansweredLock)
+            {
+                if (_coms.IsConnected)
+                {
+                    return;
+                }
+
+                ClearSimpleIpTracking();
+                _sendConnectionCurrent = false;
             }
         }
 
         /// <summary>
-        /// Forgets every unanswered message, and any lines from the old connection not yet read,
-        /// so a reply lost to a disconnect can't shift later matches
+        /// Forgets every unanswered message, and any lines from the old connection not yet read.
+        /// Call with _unansweredLock held.
         /// </summary>
-        private void ResetSimpleIpTracking()
+        private void ClearSimpleIpTracking()
         {
-            lock (_unansweredLock)
-            {
-                _unansweredIsControl.Clear();
-                _queueSimpleIp.Clear();
+            _unansweredIsControl.Clear();
+            _queueSimpleIp.Clear();
 
-                // Lines already read off the queue carry the old generation and are dropped
-                _connectionGeneration++;
-            }
+            // Lines already read off the queue carry the old generation and are dropped
+            _connectionGeneration++;
         }
 
         private int CurrentConnectionGeneration()
@@ -1274,21 +1307,16 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         private class TrackedSimpleIpMessage : IQueueMessage
         {
-            private readonly IQueueMessage _inner;
-            private readonly Func<bool> _onSend;
+            private readonly Action _send;
 
-            public TrackedSimpleIpMessage(IQueueMessage inner, Func<bool> onSend)
+            public TrackedSimpleIpMessage(Action send)
             {
-                _inner = inner;
-                _onSend = onSend;
+                _send = send;
             }
 
             public void Dispatch()
             {
-                if (_onSend())
-                {
-                    _inner.Dispatch();
-                }
+                _send();
             }
         }
 
