@@ -319,28 +319,58 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 
 ```json
 {
-    "key": "GeneratedKey",
+    "key": "display-1",
     "uid": 1,
-    "name": "GeneratedName",
-    "type": "SonyBravia",
-    "group": "Group",
+    "name": "Display",
+    "type": "sonybravia",
+    "group": "display",
     "properties": {
-        "CommunicationMonitorProperties": "SampleValue",
-        "Control": "SampleValue",
-        "warmingTimeMs": 0,
-        "coolingTimeMs": 0,
-        "ForceRs232": true,
-        "maxVolumeLevel": "SampleValue",
+        "control": {
+            "method": "com",
+            "controlPortDevKey": "processor",
+            "controlPortNumber": 1,
+            "comParams": {
+                "protocol": "RS232",
+                "baudRate": 9600,
+                "dataBits": 8,
+                "stopBits": 1,
+                "parity": "None",
+                "softwareHandshake": "None",
+                "hardwareHandshake": "None",
+                "pacing": 0
+            }
+        },
+        "CommunicationMonitorProperties": {
+            "pollInterval": 30000,
+            "timeToWarning": 60000,
+            "timeToError": 120000,
+            "pollString": ""
+        },
+        "warmingTimeMs": 20000,
+        "coolingTimeMs": 20000,
+        "maxVolumeLevel": 255,
         "activeInputs": [
             {
-                "key": "SampleString",
-                "name": "SampleString"
+                "key": "hdmi1",
+                "name": "HDMI 1"
+            },
+            {
+                "key": "hdmi2",
+                "name": "HDMI 2"
             }
         ],
         "availablePictureModes": [
             {
-                "key": "SampleString",
-                "name": "SampleString"
+                "key": "standard",
+                "name": "Standard"
+            },
+            {
+                "key": "vivid",
+                "name": "Vivid"
+            },
+            {
+                "key": "cinema",
+                "name": "Cinema"
             }
         ]
     }
@@ -348,7 +378,14 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ```
 <!-- END Config Example -->
 <!-- START Supported Types -->
+### Supported Types
 
+- sonybravia
+- sonybraviarest
+- sonybraviasimpleip
+- mockSonyBravia
+- sonybraviamock
+- sonyBraviaIr
 <!-- END Supported Types -->
 <!-- START Join Maps -->
 
