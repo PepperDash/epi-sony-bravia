@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     /// <summary>
     /// How the mock panel misbehaves, for exercising the device's error paths
@@ -81,7 +81,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
         /// <summary>
         /// Current fault mode
         /// </summary>
-        public MockSonyBraviaFault Fault { get; set; }
+        // Written by the console thread, read by the reply thread: synchronize both sides
+        private MockSonyBraviaFault fault;
+
+        public MockSonyBraviaFault Fault
+        {
+            get { lock (stateLock) return fault; }
+            set { lock (stateLock) fault = value; }
+        }
 
         /// <summary>
         /// Number of bytes in the frame that starts at buffer[0], or 0 if it can't be known yet

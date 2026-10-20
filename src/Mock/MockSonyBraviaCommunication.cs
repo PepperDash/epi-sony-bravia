@@ -5,7 +5,7 @@ using Crestron.SimplSharp;
 using PepperDash.Core;
 using PepperDash.Essentials.Core.Queues;
 
-namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     /// <summary>
     /// In-process stand-in for the display's serial port. Frames sent by the device are answered

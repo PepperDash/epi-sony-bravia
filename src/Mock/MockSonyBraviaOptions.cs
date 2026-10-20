@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace PepperDash.Essentials.Plugins.SonyBravia.Mock
+namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     /// <summary>
     /// Starting state and behavior of the mock panel, from the optional "mock" block in properties
