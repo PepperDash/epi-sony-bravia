@@ -1,10 +1,11 @@
-![PepperDash Logo](/images/logo_pdt_no_tagline_600.png)
-# Sony Bravia Display Plugin
+![PepperDash Essentials Plugin Logo](/images/essentials-plugin-blue.png)
 
 ![PepperDash Essentials](https://img.shields.io/badge/PepperDash%20Essentials-≥%20v2.20.0-blue)
 ![.NET](https://img.shields.io/badge/.NET%20Framework-4.7.2-512BD4)
 ![Crestron](https://img.shields.io/badge/Crestron-4--Series-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+# Sony Bravia Display Plugin
 
 This is a plugin repo for Sony Bravia Displays.  At this time the plugin only supports RS232 control.
 
