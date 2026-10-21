@@ -20,7 +20,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             TypeNames = new List<string> { "mockSonyBravia", "sonybraviamock" };
 
-            MinimumEssentialsFrameworkVersion = "2.4.7";
+            // Keep equal to the PepperDashEssentials PackageReference version in the csproj: the version
+            // this plugin is compiled against is its minimum
+            MinimumEssentialsFrameworkVersion = "2.20.0";
         }
 
         /// <inheritdoc />
