@@ -316,9 +316,7 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 <!-- START Minimum Essentials Framework Versions -->
 ### Minimum Essentials Framework Versions
 
-- 2.4.7
-- 2.4.7
-- 2.4.7
+- 2.20.0
 <!-- END Minimum Essentials Framework Versions -->
 <!-- START Config Example -->
 ### Config Example
