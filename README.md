@@ -317,64 +317,36 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ### Minimum Essentials Framework Versions
 
 - 2.20.0
+- 2.20.0
+- 2.20.0
 <!-- END Minimum Essentials Framework Versions -->
 <!-- START Config Example -->
 ### Config Example
 
 ```json
 {
-    "key": "display-1",
+    "key": "GeneratedKey",
     "uid": 1,
-    "name": "Display",
-    "type": "sonybravia",
-    "group": "display",
+    "name": "GeneratedName",
+    "type": "SonyBravia",
+    "group": "Group",
     "properties": {
-        "control": {
-            "method": "com",
-            "controlPortDevKey": "processor",
-            "controlPortNumber": 1,
-            "comParams": {
-                "protocol": "RS232",
-                "baudRate": 9600,
-                "dataBits": 8,
-                "stopBits": 1,
-                "parity": "None",
-                "softwareHandshake": "None",
-                "hardwareHandshake": "None",
-                "pacing": 0
-            }
-        },
-        "CommunicationMonitorProperties": {
-            "pollInterval": 30000,
-            "timeToWarning": 60000,
-            "timeToError": 120000,
-            "pollString": ""
-        },
-        "warmingTimeMs": 20000,
-        "coolingTimeMs": 20000,
-        "maxVolumeLevel": 255,
+        "CommunicationMonitorProperties": "SampleValue",
+        "Control": "SampleValue",
+        "warmingTimeMs": 0,
+        "coolingTimeMs": 0,
+        "ForceRs232": true,
+        "maxVolumeLevel": "SampleValue",
         "activeInputs": [
             {
-                "key": "hdmi1",
-                "name": "HDMI 1"
-            },
-            {
-                "key": "hdmi2",
-                "name": "HDMI 2"
+                "key": "SampleString",
+                "name": "SampleString"
             }
         ],
         "availablePictureModes": [
             {
-                "key": "standard",
-                "name": "Standard"
-            },
-            {
-                "key": "vivid",
-                "name": "Vivid"
-            },
-            {
-                "key": "cinema",
-                "name": "Cinema"
+                "key": "SampleString",
+                "name": "SampleString"
             }
         ]
     }
@@ -382,14 +354,7 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ```
 <!-- END Config Example -->
 <!-- START Supported Types -->
-### Supported Types
 
-- sonybravia
-- sonybraviarest
-- sonybraviasimpleip
-- mockSonyBravia
-- sonybraviamock
-- sonyBraviaIr
 <!-- END Supported Types -->
 <!-- START Join Maps -->
 
@@ -397,8 +362,6 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 <!-- START Interfaces Implemented -->
 ### Interfaces Implemented
 
-- ISelectableItems<string>
-- IKeyName
 - ICommunicationMonitor
 - IBridgeAdvanced
 - IInputHdmi1
@@ -411,6 +374,8 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 - IHasPowerControlWithFeedback
 - IRoutingSinkWithSwitchingWithInputPort
 - IHasInputs<string>
+- IKeyName
+- ISelectableItems<string>
 - IQueueMessage
 - IBasicCommunication
 - IBasicVolumeControls
@@ -430,7 +395,6 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 <!-- START Public Methods -->
 ### Public Methods
 
-- public void Select()
 - public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
 - public void PowerPoll()
 - public void ListRoutingInputPorts()
@@ -467,17 +431,18 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 - public void PictureModeGame()
 - public void PictureModeGraphics()
 - public void PictureModeToggle()
+- public void Select()
 - public void Dispatch()
 - public void Dispatch()
+- public void Connect()
+- public void Disconnect()
+- public void SendText(string text)
+- public void SendBytes(byte[] bytes)
 - public void SetPower(bool on)
 - public bool SetInput(string inputKey)
 - public void SetVolume(int level)
 - public void SetMute(bool muted)
 - public string Describe()
-- public void Connect()
-- public void Disconnect()
-- public void SendText(string text)
-- public void SendBytes(byte[] bytes)
 - public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
 - public void SendIrCommand(string cmd)
 - public void VolumeUp(bool pressRelease)
