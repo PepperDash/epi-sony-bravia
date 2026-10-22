@@ -1,4 +1,10 @@
-![PepperDash Logo](/images/logo_pdt_no_tagline_600.png)
+![PepperDash Essentials Plugin Logo](/images/essentials-plugin-blue.png)
+
+![PepperDash Essentials](https://img.shields.io/badge/PepperDash%20Essentials-≥%20v2.20.0-blue)
+![.NET](https://img.shields.io/badge/.NET%20Framework-4.7.2-512BD4)
+![Crestron](https://img.shields.io/badge/Crestron-4--Series-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 # Sony Bravia Display Plugin
 
 This is a plugin repo for Sony Bravia Displays.  At this time the plugin only supports RS232 control.
@@ -158,6 +164,42 @@ and `"hdmi2": "INPUT_8_(HDMI)"`. It has no app, transport or colour keys at all.
 To see every name a file contains, set the debug level to verbose (`appdebug:1 2`) and run
 `devjson:1 {"deviceKey":"<key>-ir","methodName":"PrintAvailableCommands","params":[]}`.
 
+## Mock Display (bench testing without hardware)
+
+The `mockSonyBravia` type builds the real Sony BRAVIA device on an in-process mock panel that speaks the RS232 protocol. Power, warm-up and cool-down, inputs, volume, mute, picture mode and polling all run through the same code as with real hardware, so the room and the touchpanel behave the same way. To switch an existing display to the mock, change only `type`. The type was named `sonybraviamock` before 2026-10-19, and that name still works as an alias. Any `control` block is ignored, and `activeInputs`, `availablePictureModes`, `warmingTimeMs` and the other properties work as usual.
+
+```json
+{
+    "key": "display-1",
+    "name": "Display",
+    "type": "mockSonyBravia",
+    "group": "display",
+    "properties": {
+        "mock": {                       // optional; these are the defaults
+            "responseDelayMs": 50,      // delay before each reply; keep it under 100
+            "powerOn": false,           // starting power state
+            "input": "hdmi1",           // hdmi1-hdmi5, video1-video3, component1-component3, vga1
+            "volume": 20,               // starting raw volume
+            "maxVolume": 255,           // higher levels answer "over maximum"
+            "muted": false
+        }
+    }
+}
+```
+
+Like a real panel, the mock answers "command cancelled" to everything except power while it is off. Picture mode has no query, so its reply is only an acknowledgement.
+
+Use the `mocksony` console command to make changes at the panel, or to inject faults. The device picks up panel-side changes on its next poll.
+
+```
+mocksony display-1 status
+mocksony display-1 power on|off
+mocksony display-1 input hdmi1|...|vga1
+mocksony display-1 volume <raw level>
+mocksony display-1 mute on|off
+mocksony display-1 fault none|error|silent    // error: answer everything "command cancelled"; silent: stop answering (goes offline)
+```
+
 ## Device Bridging
 
 ### Essentials Device Bridge Configuration
@@ -271,3 +313,230 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputComponent3", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputVga1", "params":[]}
 devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 ```
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 2.20.0
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "display-1",
+    "uid": 1,
+    "name": "Display",
+    "type": "sonybravia",
+    "group": "display",
+    "properties": {
+        "control": {
+            "method": "com",
+            "controlPortDevKey": "processor",
+            "controlPortNumber": 1,
+            "comParams": {
+                "protocol": "RS232",
+                "baudRate": 9600,
+                "dataBits": 8,
+                "stopBits": 1,
+                "parity": "None",
+                "softwareHandshake": "None",
+                "hardwareHandshake": "None",
+                "pacing": 0
+            }
+        },
+        "CommunicationMonitorProperties": {
+            "pollInterval": 30000,
+            "timeToWarning": 60000,
+            "timeToError": 120000,
+            "pollString": ""
+        },
+        "warmingTimeMs": 20000,
+        "coolingTimeMs": 20000,
+        "maxVolumeLevel": 255,
+        "activeInputs": [
+            {
+                "key": "hdmi1",
+                "name": "HDMI 1"
+            },
+            {
+                "key": "hdmi2",
+                "name": "HDMI 2"
+            }
+        ],
+        "availablePictureModes": [
+            {
+                "key": "standard",
+                "name": "Standard"
+            },
+            {
+                "key": "vivid",
+                "name": "Vivid"
+            },
+            {
+                "key": "cinema",
+                "name": "Cinema"
+            }
+        ]
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+### Supported Types
+
+- sonybravia
+- sonybraviarest
+- sonybraviasimpleip
+- mockSonyBravia
+- sonybraviamock
+- sonyBraviaIr
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- ISelectableItems<string>
+- IKeyName
+- ICommunicationMonitor
+- IBridgeAdvanced
+- IInputHdmi1
+- IInputHdmi2
+- IInputHdmi3
+- IInputHdmi4
+- IInputVga1
+- IOnline
+- IBasicVolumeWithFeedbackAdvanced
+- IHasPowerControlWithFeedback
+- IRoutingSinkWithSwitchingWithInputPort
+- IHasInputs<string>
+- IQueueMessage
+- IBasicCommunication
+- IBasicVolumeControls
+- IDPad
+- INumericKeypad
+- ITransport
+- IChannel
+- IColor
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- MessengerBase
+- TwoWayDisplayBase
+- DisplayBase
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void Select()
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public void PowerPoll()
+- public void ListRoutingInputPorts()
+- public void BuildInputRoutingPorts()
+- public void InputHdmi1()
+- public void InputHdmi2()
+- public void InputHdmi3()
+- public void InputHdmi4()
+- public void InputHdmi5()
+- public void InputVideo1()
+- public void InputVideo2()
+- public void InputVideo3()
+- public void InputComponent1()
+- public void InputComponent2()
+- public void InputComponent3()
+- public void InputVga1()
+- public void ResetPolling()
+- public void SendRs232Command(byte[] command)
+- public void EnqueueCommand(IQueueMessage command)
+- public void Dispatch()
+- public void SetInput(string selector)
+- public void MuteOn()
+- public void MuteOff()
+- public void MuteToggle()
+- public void SetVolume(ushort level)
+- public void VolumeUp(bool pressRelease)
+- public void VolumeDown(bool pressRelease)
+- public void PictureModeVivid()
+- public void PictureModeStandard()
+- public void PictureModeCinema()
+- public void PictureModeCinema2()
+- public void PictureModeCustom()
+- public void PictureModeSports()
+- public void PictureModeGame()
+- public void PictureModeGraphics()
+- public void PictureModeToggle()
+- public void Dispatch()
+- public void Dispatch()
+- public void SetPower(bool on)
+- public bool SetInput(string inputKey)
+- public void SetVolume(int level)
+- public void SetMute(bool muted)
+- public string Describe()
+- public void Connect()
+- public void Disconnect()
+- public void SendText(string text)
+- public void SendBytes(byte[] bytes)
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public void SendIrCommand(string cmd)
+- public void VolumeUp(bool pressRelease)
+- public void VolumeDown(bool pressRelease)
+- public void MuteToggle()
+- public void Up(bool pressRelease)
+- public void Down(bool pressRelease)
+- public void Left(bool pressRelease)
+- public void Right(bool pressRelease)
+- public void Select(bool pressRelease)
+- public void Menu(bool pressRelease)
+- public void Exit(bool pressRelease)
+- public void Digit0(bool pressRelease)
+- public void Digit1(bool pressRelease)
+- public void Digit2(bool pressRelease)
+- public void Digit3(bool pressRelease)
+- public void Digit4(bool pressRelease)
+- public void Digit5(bool pressRelease)
+- public void Digit6(bool pressRelease)
+- public void Digit7(bool pressRelease)
+- public void Digit8(bool pressRelease)
+- public void Digit9(bool pressRelease)
+- public void KeypadAccessoryButton1(bool pressRelease)
+- public void KeypadAccessoryButton2(bool pressRelease)
+- public void Play(bool pressRelease)
+- public void Pause(bool pressRelease)
+- public void Stop(bool pressRelease)
+- public void Rewind(bool pressRelease)
+- public void FFwd(bool pressRelease)
+- public void ChapMinus(bool pressRelease)
+- public void ChapPlus(bool pressRelease)
+- public void Record(bool pressRelease)
+- public void ChannelUp(bool pressRelease)
+- public void ChannelDown(bool pressRelease)
+- public void LastChannel(bool pressRelease)
+- public void Guide(bool pressRelease)
+- public void Info(bool pressRelease)
+- public void Red(bool pressRelease)
+- public void Green(bool pressRelease)
+- public void Yellow(bool pressRelease)
+- public void Blue(bool pressRelease)
+- public void Home(bool pressRelease)
+- public void Back(bool pressRelease)
+- public void Enter(bool pressRelease)
+- public void Select()
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- IsOnline
+- MuteFeedback
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+### Int Feedbacks
+
+- VolumeLevelFeedback
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+### String Feedbacks
+
+- PictureModeFeedback
+<!-- END String Feedbacks -->
