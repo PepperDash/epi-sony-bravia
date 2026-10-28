@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Crestron.SimplSharp;
 using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core.Logging;
 using PepperDash.Essentials.Core;
@@ -36,8 +35,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // both -> CUSTOM_ON) carries both meanings, so whichever key sends it, it is still treated as power.
         private readonly Dictionary<string, List<string>> _labelMeanings = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
-        private CTimer _warmupTimer;
-        private CTimer _cooldownTimer;
+        private System.Threading.Timer _warmupTimer;
+        private System.Threading.Timer _cooldownTimer;
 
         // The selection to re-send when warm-up ends. One slot, replaced on each switch, so only the
         // latest selection replays.
@@ -299,7 +298,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // the commands go out in the order the operations happened and the warming/cooling state
         // always matches the last command sent. Each warm-up carries a generation; cancelling or
         // restarting it bumps the generation, so a timer callback that was already waiting for the
-        // lock (stopping a CTimer doesn't cancel a callback in flight) sees it is stale and does nothing.
+        // lock (stopping a timer doesn't cancel a callback in flight) sees it is stale and does nothing.
 
         public override void PowerOn()
         {
@@ -315,13 +314,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             Transmit(SonyBraviaIrCommands.PowerOn);
 
             _cooldownGeneration++;
-            _cooldownTimer?.Stop();
+            _cooldownTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
             IsCoolingDown = false;
             IsWarmingUp = true;
 
             var generation = ++_warmupGeneration;
-            _warmupTimer?.Stop();
-            _warmupTimer = new CTimer(o => OnWarmupComplete(generation), WarmupTime);
+            _warmupTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            _warmupTimer = new System.Threading.Timer(o => OnWarmupComplete(generation), null, WarmupTime, System.Threading.Timeout.Infinite);
         }
 
         /// <summary>
@@ -349,7 +348,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             _pendingSwitch = null;
             _warmupGeneration++;
-            _warmupTimer?.Stop();
+            _warmupTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
             IsWarmingUp = false;
         }
 
@@ -364,8 +363,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 IsCoolingDown = true;
                 var generation = ++_cooldownGeneration;
-                _cooldownTimer?.Stop();
-                _cooldownTimer = new CTimer(o => OnCooldownComplete(generation), CooldownTime);
+                _cooldownTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                _cooldownTimer = new System.Threading.Timer(o => OnCooldownComplete(generation), null, CooldownTime, System.Threading.Timeout.Infinite);
             }
         }
 

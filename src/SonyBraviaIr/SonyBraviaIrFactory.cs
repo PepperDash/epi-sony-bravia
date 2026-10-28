@@ -11,9 +11,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             TypeNames = new List<string> { "sonyBraviaIr" };
 
-            // Keep equal to the PepperDashEssentials PackageReference version in the csproj: the version
-            // this plugin is compiled against is its minimum
-            MinimumEssentialsFrameworkVersion = "2.20.0";
+            // Keep equal to the major.minor.patch of the PepperDashEssentials PackageReference version in the
+            // csproj, without any prerelease suffix: Essentials can't parse "-rc.N" and skips loading the plugin
+            MinimumEssentialsFrameworkVersion = "3.0.0";
         }
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)

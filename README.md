@@ -1,7 +1,7 @@
 ![PepperDash Essentials Plugin Logo](/images/essentials-plugin-blue.png)
 
-![PepperDash Essentials](https://img.shields.io/badge/PepperDash%20Essentials-≥%20v2.20.0-blue)
-![.NET](https://img.shields.io/badge/.NET%20Framework-4.7.2-512BD4)
+![PepperDash Essentials](https://img.shields.io/badge/PepperDash%20Essentials-≥%20v3.0.0-blue)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![Crestron](https://img.shields.io/badge/Crestron-4--Series-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -316,7 +316,7 @@ devjson:1 {"deviceKey":"display-1", "methodName":"InputPoll", "params":[]}
 <!-- START Minimum Essentials Framework Versions -->
 ### Minimum Essentials Framework Versions
 
-- 2.20.0
+- 3.0.0
 <!-- END Minimum Essentials Framework Versions -->
 <!-- START Config Example -->
 ### Config Example

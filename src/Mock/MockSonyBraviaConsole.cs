@@ -49,7 +49,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("Unable to add the mocksony console command: {0}", e.Message);
+                    Debug.LogError("Unable to add the mocksony console command: {message}", e.Message);
                 }
             }
         }
