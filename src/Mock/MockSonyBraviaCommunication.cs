@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Crestron.SimplSharp;
 using PepperDash.Core;
 using PepperDash.Essentials.Core.Queues;
 
@@ -102,7 +101,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (responseDelayMs > 0)
             {
-                CrestronEnvironment.Sleep(responseDelayMs);
+                System.Threading.Thread.Sleep(responseDelayMs);
             }
 
             var reply = responder.Respond(frame);

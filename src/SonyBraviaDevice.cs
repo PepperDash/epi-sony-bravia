@@ -1,5 +1,4 @@
 ﻿using Crestron.SimplSharp;
-using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core;
 using PepperDash.Core.Logging;
@@ -8,9 +7,9 @@ using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 using PepperDash.Essentials.Core.Queues;
-using PepperDash.Essentials.Devices.Displays;
 using Serilog.Events;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -20,11 +19,9 @@ using TwoWayDisplayBase = PepperDash.Essentials.Devices.Common.Displays.TwoWayDi
 namespace PepperDash.Essentials.Plugins.SonyBravia
 {
     public class SonyBraviaDevice : TwoWayDisplayBase, ICommunicationMonitor, IBridgeAdvanced,
-        IInputHdmi1, IInputHdmi2, IInputHdmi3, IInputHdmi4, IInputVga1,
         IOnline,
         IBasicVolumeWithFeedbackAdvanced,
         IHasPowerControlWithFeedback,
-        IRoutingSinkWithSwitchingWithInputPort,
         IHasInputs<string>
     {
         private const long pollTime = 2000;
@@ -40,8 +37,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             TimeToError = 120000
         };
 
-        private readonly CTimer _pollTimer;
-        private CTimer _volumeTimer;
+        private readonly System.Threading.Timer _pollTimer;
+        private System.Threading.Timer _volumeTimer;
         private int _volumeCounter;
         private readonly IQueueMessage _powerOffCommand;
         private readonly IQueueMessage _powerOnCommand;
@@ -49,7 +46,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private byte[] _incomingBuffer = { };
 
         private readonly GenericQueue _queueRs232;
-        private readonly CrestronQueue<SimpleIpLine> _queueSimpleIp;
+        private readonly BlockingCollection<SimpleIpLine> _queueSimpleIp;
         private string _currentInput;
         private bool _powerIsOn;
         private bool _isCooling;
@@ -81,8 +78,6 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public SonyBraviaDevice(DeviceConfig config, IBasicCommunication comms)
                 : base(config.Key, config.Name)
         {
-            DebugLevels.Key = Key;
-
             var props = config.Properties.ToObject<SonyBraviaConfig>();
             _coolingTimeMs = props.CoolingTimeMs ?? 20000;
             _warmingtimeMs = props.WarmingTimeMs ?? 20000;
@@ -103,7 +98,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 _coms.BytesReceived += (sender, args) =>
                 {
-                    Debug.Console(DebugLevels.DebugLevel, this, "received response: {0}", ComTextHelper.GetEscapedText(args.Bytes));
+                    this.LogVerbose("received response: {response}", ComTextHelper.GetEscapedText(args.Bytes));
 
                     _queueRs232.Enqueue(new Rs232Response(args.Bytes, ProcessRs232Response));
                 };
@@ -117,10 +112,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             else
             {
-                _queueSimpleIp = new CrestronQueue<SimpleIpLine>(50);
+                // Bounded like the CrestronQueue it replaces: Add blocks while 50 lines are waiting
+                _queueSimpleIp = new BlockingCollection<SimpleIpLine>(new ConcurrentQueue<SimpleIpLine>(), 50);
                 var comsGather = new CommunicationGather(_coms, "\x0A");
                 comsGather.LineReceived += (sender, args) =>
-                    _queueSimpleIp.Enqueue(new SimpleIpLine(CurrentConnectionGeneration(), args.Text));
+                {
+                    try
+                    {
+                        _queueSimpleIp.Add(new SimpleIpLine(CurrentConnectionGeneration(), args.Text));
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // The program is stopping and the reader is gone: drop the line
+                    }
+                };
 
                 // Answers never cross a reconnect: forget what's unanswered when the connection drops
                 var socketStatus = _coms as ISocketStatus;
@@ -220,20 +225,26 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             SetupInputs();
 
 
-            var worker = _comsIsRs232
-                ? null //new Thread(ProcessRs232Response, null)
-                : new Thread(ProcessSimpleIpResponse, null);
+            // Background, so it can never hold the program open; it ends when the program stops (below)
+            if (!_comsIsRs232)
+            {
+                new System.Threading.Thread(ProcessSimpleIpResponse)
+                {
+                    IsBackground = true,
+                    Name = $"{Key}-simpleIpReader"
+                }.Start();
+            }
 
             _pollTimer = _comsIsRs232
-                ? new CTimer((o) => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum() }), Timeout.Infinite)
-                : new CTimer((o) => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery }), Timeout.Infinite);
+                ? new System.Threading.Timer(this.GuardTimerCallback("poll", () => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum() })), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite)
+                : new System.Threading.Timer(this.GuardTimerCallback("poll", () => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery })), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
             // Simple IP VOLU uses the TV's 0-100 volume scale; RS232 keeps its 0-255 default. An explicit
             // maxVolumeLevel applies to both, for feedback and for outgoing levels alike.
             maxVolumeLevel = props.MaxVolumeLevel ?? (_comsIsRs232 ? (byte)0xFF : (byte)100);
 
             MuteFeedback = new BoolFeedback(() => _muted);
-            VolumeLevelFeedback = new IntFeedback(() => CrestronEnvironment.ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
+            VolumeLevelFeedback = new IntFeedback(() => ScaleWithLimits(_rawVolume, maxVolumeLevel, 0, 65535, 0));
 
             PictureModeFeedback = new StringFeedback(() => _pictureMode);
             AvailablePictureModes = props.AvailablePictureModes;
@@ -245,38 +256,32 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     if (type != eProgramStatusEventType.Stopping)
                         return;
 
-                    worker?.Abort();
+                    // The Simple IP reader exits once it has read what's already queued
+                    _queueSimpleIp?.CompleteAdding();
 
-                    _pollTimer.Stop();
+                    // Stop the monitor first: its polls reschedule _pollTimer, which throws once disposed
+                    CommunicationMonitor?.Stop();
                     _pollTimer.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at program stop: {0}{1}",
-                        ex.Message, ex.StackTrace);
+                    this.LogError(ex, "Caught an exception at program stop: {message}", ex.Message);
                 }
             };
         }
 
-        public override void Initialize()
+        protected override void Initialize()
         {
             try
             {
                 _coms.Connect();
                 CommunicationMonitor.Start();
-                _pollTimer.Reset(0, pollTime);
+                _pollTimer.Change(0, pollTime);
             }
             catch (Exception ex)
             {
-                Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Notice, "Caught an exception at AllDevicesActivated: {0}{1}",
-                    ex.Message, ex.StackTrace);
+                this.LogError(ex, "Caught an exception at Initialize: {message}", ex.Message);
             }
-        }
-
-
-        public override bool CustomActivate()
-        {
-            return base.CustomActivate();
         }
 
         protected override void CreateMobileControlMessengers()
@@ -325,27 +330,49 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     return;
                 }
 
+                // System.Timers.Timer rejects an interval of 0 or less, where CTimer fired at once:
+                // a warming or cooling time of 0 completes immediately
                 if (value)
                 {
                     IsWarming = true;
 
-                    WarmupTimer = new CTimer(o =>
+                    void WarmupComplete()
                     {
                         _powerIsOn = value;
                         IsWarming = false;
                         PowerIsOnFeedback.FireUpdate();
-                    }, _warmingtimeMs);
+                    }
+
+                    if (_warmingtimeMs <= 0)
+                    {
+                        WarmupComplete();
+                        return;
+                    }
+
+                    WarmupTimer = new System.Timers.Timer(_warmingtimeMs) { AutoReset = false };
+                    WarmupTimer.Elapsed += (s, e) => WarmupComplete();
+                    WarmupTimer.Start();
                 }
                 else
                 {
                     IsCooling = true;
 
-                    CooldownTimer = new CTimer(o =>
+                    void CooldownComplete()
                     {
                         _powerIsOn = value;
                         IsCooling = false;
                         PowerIsOnFeedback.FireUpdate();
-                    }, _coolingTimeMs);
+                    }
+
+                    if (_coolingTimeMs <= 0)
+                    {
+                        CooldownComplete();
+                        return;
+                    }
+
+                    CooldownTimer = new System.Timers.Timer(_coolingTimeMs) { AutoReset = false };
+                    CooldownTimer.Elapsed += (s, e) => CooldownComplete();
+                    CooldownTimer.Start();
                 }
             }
         }
@@ -412,9 +439,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         public BoolFeedback IsOnline { get { return CommunicationMonitor.IsOnlineFeedback; } }
 
-#if SERIES4
         public ISelectableItems<string> Inputs { get; private set; }
-#endif
+
         private bool _muted;
 
         private int _rawVolume;
@@ -426,6 +452,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public int RawVolumeLevel => _rawVolume;
 
         public eVolumeLevelUnits Units => eVolumeLevelUnits.Absolute;
+
+        public int MaxVolumeLevel => maxVolumeLevel;
 
         /// <summary>
         /// Poll device
@@ -446,18 +474,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (_comsIsRs232)
             {
-                _pollTimer.Stop();
+                _pollTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
-                CrestronEnvironment.Sleep(500);
+                System.Threading.Thread.Sleep(500);
 
                 var command = Rs232Commands.PowerOn.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
-                _pollTimer.Reset(500, pollTime);
+                _pollTimer.Change(500, pollTime);
                 return;
             }
             EnqueueSimpleIpControl("POWR", _powerOnCommand);
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
 
         /// <summary>
@@ -467,18 +495,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (_comsIsRs232)
             {
-                _pollTimer.Stop();
+                _pollTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
-                CrestronEnvironment.Sleep(500);
+                System.Threading.Thread.Sleep(500);
 
                 var command = Rs232Commands.PowerOff.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
-                _pollTimer.Reset(500, pollTime);
+                _pollTimer.Change(500, pollTime);
                 return;
             }
             EnqueueSimpleIpControl("POWR", _powerOffCommand);
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
 
         /// <summary>
@@ -506,11 +534,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 var command = Rs232Commands.PowerQuery.WithChecksum();
                 _lastCommand = command;
                 _coms.SendBytes(command);
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Change(1000, pollTime);
                 return;
             }
             CommandQueue.Enqueue(TrackSimpleIp("POWR", false, SimpleIpCommands.GetQueryCommand(_coms, "POWR")));
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
 
         /// <summary>
@@ -518,15 +546,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// </summary>
         public void ListRoutingInputPorts()
         {
-            var seperator = new string('*', 50);
-
-            Debug.Console(DebugLevels.TraceLevel, this, seperator);
             foreach (var inputPort in InputPorts)
             {
-                Debug.Console(DebugLevels.TraceLevel, this, "inputPort key: {0}, connectionType: {1}, feedbackMatchObject: {2}, port: {3}",
+                this.LogInformation("inputPort key: {key}, connectionType: {connectionType}, feedbackMatchObject: {feedbackMatchObject}, port: {port}",
                     inputPort.Key, inputPort.ConnectionType, inputPort.FeedbackMatchObject, inputPort.Port);
             }
-            Debug.Console(DebugLevels.TraceLevel, this, seperator);
         }
 
         private void AddInputRoutingPort(RoutingInputPort input, int port)
@@ -792,7 +816,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         }
 
         /// <summary>
-        /// Select PC input using the IInputVga1 interface
+        /// Select PC input (VGA 1)
         /// </summary>
         public void InputVga1()
         {
@@ -840,7 +864,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         public void ResetPolling()
         {
-            _pollTimer.Reset(100, pollTime);
+            _pollTimer.Change(100, pollTime);
         }
 
         public void SendRs232Command(byte[] command)
@@ -849,7 +873,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             _lastCommand = command;
             _coms.SendBytes(command);
-            _pollTimer.Reset(100, pollTime);
+            _pollTimer.Change(100, pollTime);
         }
 
         private void ProcessRs232Response(byte[] response)
@@ -952,7 +976,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     PictureModeFeedback.FireUpdate();
                     break;
                 default:
-                    Debug.Console(0, this, "Unknown response received: {0}", ComTextHelper.GetEscapedText(message));
+                    this.LogWarning("Unknown response received: {response}", ComTextHelper.GetEscapedText(message));
                     break;
             }
         }
@@ -962,27 +986,26 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             if (!_ackStringFormats.TryGetValue(message[1], out string consoleMessageFormat))
             {
-                Debug.Console(DebugLevels.DebugLevel, this, "Unknown Response: {0}", ComTextHelper.GetEscapedText(message));
+                this.LogDebug("Unknown Response: {response}", ComTextHelper.GetEscapedText(message));
                 return;
             }
 
             Debug.LogMessage(LogEventLevel.Information, "Ack: {message}", this, string.Format(consoleMessageFormat, ComTextHelper.GetEscapedText(message)));
         }
 
-        private object ProcessSimpleIpResponse(object _)
+        private void ProcessSimpleIpResponse()
         {
-            var seperator = new string('-', 50);
-
             while (true)
             {
                 var lockTaken = false;
                 try
                 {
-                    var line = _queueSimpleIp.Dequeue();
-                    if (line == null)
+                    SimpleIpLine line;
+                    if (!_queueSimpleIp.TryTake(out line, System.Threading.Timeout.Infinite))
                     {
-                        Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _queueSimpleIp.Dequeue failed, object was null");
-                        return null;
+                        // CompleteAdding was called and the queue is empty: the program is stopping
+                        this.LogDebug("ProcessSimpleIpResponse: program stopping, Simple IP reader exiting");
+                        return;
                     }
 
                     // Match and apply each line under the tracking lock (never while waiting in Dequeue),
@@ -990,14 +1013,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     System.Threading.Monitor.Enter(_unansweredLock, ref lockTaken);
                     if (line.Generation != _connectionGeneration)
                     {
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: dropping '{0}' from a previous connection", line.Text);
+                        this.LogVerbose("ProcessSimpleIpResponse: dropping '{line}' from a previous connection", line.Text);
                         continue;
                     }
 
                     var response = line.Text;
 
-                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: raw '{0}'", response);
+                    this.LogVerbose("ProcessSimpleIpResponse: raw '{response}'", response);
 
                     // http://regexstorm.net/tester
                     // *([A,C,E,N])(?<command>POWR|INPT|VOLU|AMUT)(?<parameters>.[Ff]+|\d+)
@@ -1012,20 +1034,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     if (!matches.Success)
                     {
                         // Skip it and keep reading; returning here would end this thread for good
-                        Debug.Console(DebugLevels.TraceLevel, this, "ProcessSimpleIpResponse: unknown response '{0}'", response);
+                        this.LogDebug("ProcessSimpleIpResponse: unknown response '{response}'", response);
                         continue;
                     }
 
                     var type = matches.Groups["type"].Value;
                     var command = matches.Groups["command"].Value;
                     var parameters = matches.Groups["parameters"].Value;
-                    Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: type-'{0}' | command-'{1}' | parameters-'{2}'",
+                    this.LogVerbose("ProcessSimpleIpResponse: type-'{type}' | command-'{command}' | parameters-'{parameters}'",
                         type, command, parameters);
 
                     // The answer to one of our control messages only reports success or failure, not state
                     if (type == "A" && IsAnswerToControl(command))
                     {
-                        Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: control answer for '{0}': '{1}'", command, parameters);
+                        this.LogVerbose("ProcessSimpleIpResponse: control answer for '{command}': '{parameters}'", command, parameters);
                         continue;
                     }
 
@@ -1039,7 +1061,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         case "POWR":
                             {
                                 PowerIsOn = Convert.ToInt16(parameters) == 1;
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: PowerIsOn == '{0}'", PowerIsOn.ToString());
+                                this.LogVerbose("ProcessSimpleIpResponse: PowerIsOn == '{powerIsOn}'", PowerIsOn);
                                 break;
                             }
                         case "VOLU":
@@ -1066,7 +1088,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 var inputType = (SimpleIpCommands.InputTypes)Convert.ToInt16(inputParts.ElementAt(0));
                                 var inputNumber = Convert.ToInt16(inputParts.ElementAt(1));
 
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: inputType == '{0}' | inputNumber == '{1}'",
+                                this.LogVerbose("ProcessSimpleIpResponse: inputType == '{inputType}' | inputNumber == '{inputNumber}'",
                                     inputType, inputNumber);
 
                                 // Use the same input keys and port codes as the RS232 path, so the
@@ -1106,7 +1128,6 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 CurrentInputPort = InputPorts.FirstOrDefault(p => p.FeedbackMatchObject.Equals(inputCode));
                                 CurrentInputFeedback.FireUpdate();
 
-#if SERIES4
                                 // Deselect everything when the current input isn't in the list
                                 foreach (var item in Inputs.Items)
                                 {
@@ -1114,32 +1135,22 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                                 }
 
                                 Inputs.CurrentItem = _currentInput;
-#endif
-                                Debug.Console(DebugLevels.ErrorLevel, this, "ProcessSimpleIpResponse: _currentInput == '{0}'", _currentInput);
+
+                                this.LogVerbose("ProcessSimpleIpResponse: _currentInput == '{currentInput}'", _currentInput);
 
                                 break;
                             }
                         default:
                             {
-                                Debug.Console(DebugLevels.DebugLevel, this, "ProcessSimpleIpResponse: unhandled response '{0}' == '{1}'",
+                                this.LogDebug("ProcessSimpleIpResponse: unhandled response '{command}' == '{parameters}'",
                                     command, parameters);
                                 break;
                             }
                     }
-
-                    Debug.Console(DebugLevels.ErrorLevel, this, seperator);
                 }
                 catch (Exception ex)
                 {
-                    Debug.Console(DebugLevels.TraceLevel, this, Debug.ErrorLogLevel.Error,
-                        "ProcessSimpleIpResponse Exception: {0}", ex.Message);
-                    Debug.Console(DebugLevels.DebugLevel, this, Debug.ErrorLogLevel.Error,
-                        "ProcessSimpleIpResponse Exception Stack Trace: {0}", ex.StackTrace);
-                    if (ex.InnerException != null)
-                        Debug.Console(DebugLevels.ErrorLevel, this, Debug.ErrorLogLevel.Error,
-                            "ProcessSimpleIpResponse Inner Exception: {0}", ex.InnerException);
-
-                    Debug.Console(DebugLevels.DebugLevel, this, seperator);
+                    this.LogError(ex, "ProcessSimpleIpResponse Exception: {message}", ex.Message);
                 }
                 finally
                 {
@@ -1223,11 +1234,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     if (!_reconnectingForNoReply)
                     {
                         _reconnectingForNoReply = true;
-                        Debug.Console(DebugLevels.ErrorLevel, this, "{0} messages for {1} are unanswered; reconnecting to resynchronize",
+                        this.LogWarning("{count} messages for {fourCc} are unanswered; reconnecting to resynchronize",
                             sent.Count, fourCc);
 
                         // Off this lock: the socket's status callback takes it during Disconnect
-                        CrestronInvoke.BeginInvoke(o => ReconnectForNoReply());
+                        System.Threading.Tasks.Task.Run(() => ReconnectForNoReply());
                     }
 
                     return;
@@ -1260,7 +1271,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
             catch (Exception ex)
             {
-                Debug.Console(DebugLevels.ErrorLevel, this, "Reconnect after unanswered messages failed: {0}", ex.Message);
+                this.LogError(ex, "Reconnect after unanswered messages failed: {message}", ex.Message);
             }
             finally
             {
@@ -1302,7 +1313,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private void ClearSimpleIpTracking()
         {
             _unansweredIsControl.Clear();
-            _queueSimpleIp.Clear();
+            while (_queueSimpleIp.TryTake(out _))
+            {
+            }
 
             // Lines already read off the queue carry the old generation and are dropped
             System.Threading.Interlocked.Increment(ref _connectionGeneration);
@@ -1364,7 +1377,6 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
         }
 
-#if SERIES4
         public void SetInput(string selector)
         {
             var input = Inputs.Items[selector];
@@ -1374,9 +1386,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 input.Select();
             }
 
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
-#endif
+
         public void MuteOn()
         {
             if (_comsIsRs232)
@@ -1386,14 +1398,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _coms.SendBytes(command);
                 _muted = true;
                 MuteFeedback.FireUpdate();
-                _pollTimer.Reset(100, pollTime);
+                _pollTimer.Change(100, pollTime);
                 return;
             }
             _muted = true;
             MuteFeedback.FireUpdate();
             // AMUT: 1 = mute, 0 = unmute
             EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 1));
-            _pollTimer.Reset(100, pollTime);
+            _pollTimer.Change(100, pollTime);
         }
 
         public void MuteOff()
@@ -1405,13 +1417,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _muted = false;
                 MuteFeedback.FireUpdate();
                 _coms.SendBytes(command);
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Change(1000, pollTime);
                 return;
             }
             _muted = false;
             MuteFeedback.FireUpdate();
             EnqueueSimpleIpControl("AMUT", SimpleIpCommands.GetControlCommand(_coms, "AMUT", 0));
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
         public void MuteToggle()
         {
@@ -1424,11 +1436,23 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             MuteOn();
         }
 
+        /// <summary>
+        /// Scales a value linearly from one range to another, clamping at the input limits. Matches
+        /// CrestronEnvironment.ScaleWithLimits (int overload), including its truncating division.
+        /// </summary>
+        private static int ScaleWithLimits(int value, int inputUpper, int inputLower, int outputUpper, int outputLower)
+        {
+            if (value >= inputUpper) return outputUpper;
+            if (value <= inputLower) return outputLower;
+
+            return (int)(outputLower + (long)(value - inputLower) * (outputUpper - outputLower) / (inputUpper - inputLower));
+        }
+
         public void SetVolume(ushort level)
         {
-            var scaledVolume = CrestronEnvironment.ScaleWithLimits(level, 65535, 0, maxVolumeLevel, 0);
+            var scaledVolume = ScaleWithLimits(level, 65535, 0, maxVolumeLevel, 0);
 
-            Debug.Console(2, this, "Input level: {0} scaled: {1}", level, scaledVolume);
+            this.LogVerbose("Input level: {level} scaled: {scaledVolume}", level, scaledVolume);
 
             if (_comsIsRs232)
             {
@@ -1436,18 +1460,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 _lastCommand = command;
                 _coms.SendBytes(command);
 
-                _pollTimer.Reset(0, pollTime);
+                _pollTimer.Change(0, pollTime);
 
                 return;
             }
 
             EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", scaledVolume));
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
 
         private void SetVolume(int level, bool resetPoll = false)
         {
-            Debug.Console(2, this, "Input level: {0}", level);
+            this.LogVerbose("Input level: {level}", level);
 
             if (_comsIsRs232)
             {
@@ -1457,38 +1481,34 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 if (resetPoll)
                 {
-                    _pollTimer.Reset(1000, pollTime);
+                    _pollTimer.Change(1000, pollTime);
                 }
 
                 return;
             }
 
             EnqueueSimpleIpControl("VOLU", SimpleIpCommands.GetControlCommand(_coms, "VOLU", level));
-            _pollTimer.Reset(1000, pollTime);
+            _pollTimer.Change(1000, pollTime);
         }
 
         public void VolumeUp(bool pressRelease)
         {
             if (!pressRelease)
             {
-                if (_volumeTimer != null)
-                {
-                    _volumeTimer.Stop();
-                    _volumeTimer.Dispose();
-                    _volumeTimer = null;
-                }
+                // One atomic take, so a ramp tick clearing the timer at the same moment can't race this
+                System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Change(1000, pollTime);
                 return;
             }
 
             if (_comsIsRs232)
             {
-                _pollTimer.Stop();
+                _pollTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
                 _volumeCounter = 0;
 
-                _volumeTimer = new CTimer(o =>
+                _volumeTimer = new System.Threading.Timer(this.GuardTimerCallback("volume up", () =>
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
@@ -1497,12 +1517,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         _rawVolume = maxVolumeLevel;
                         VolumeLevelFeedback.FireUpdate();
 
-                        if (_volumeTimer != null)
-                        {
-                            _volumeTimer.Stop();
-                            _volumeTimer.Dispose();
-                            _volumeTimer = null;
-                        }
+                        System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                         return;
                     }
@@ -1530,7 +1545,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     VolumeLevelFeedback.FireUpdate();
 
                     _volumeCounter += 1;
-                }, null, 0, 500);
+                }), null, 0, 500);
 
                 return;
             }
@@ -1540,24 +1555,20 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (!pressRelease)
             {
-                if (_volumeTimer != null)
-                {
-                    _volumeTimer.Stop();
-                    _volumeTimer.Dispose();
-                    _volumeTimer = null;
-                }
+                // One atomic take, so a ramp tick clearing the timer at the same moment can't race this
+                System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
-                _pollTimer.Reset(1000, pollTime);
+                _pollTimer.Change(1000, pollTime);
                 return;
             }
 
             if (_comsIsRs232)
             {
-                _pollTimer.Stop();
+                _pollTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
                 _volumeCounter = 0;
 
-                _volumeTimer = new CTimer(o =>
+                _volumeTimer = new System.Threading.Timer(this.GuardTimerCallback("volume down", () =>
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
@@ -1566,12 +1577,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         _rawVolume = 0;
                         VolumeLevelFeedback.FireUpdate();
 
-                        if (_volumeTimer != null)
-                        {
-                            _volumeTimer.Stop();
-                            _volumeTimer.Dispose();
-                            _volumeTimer = null;
-                        }
+                        System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                         return;
                     }
@@ -1601,7 +1607,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _volumeCounter += 1;
 
-                }, null, 0, 500);
+                }), null, 0, 500);
 
                 return;
             }

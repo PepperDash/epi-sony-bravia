@@ -39,7 +39,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         public static bool ParsePowerResponse(this byte[] response)
         {            
-            Debug.Console(DebugLevels.DebugLevel, "ParsePowerResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogVerbose("ParsePowerResponse response: {response}", ComTextHelper.GetEscapedText(response));
 
             if (response[2] == 0x00)
             {
@@ -58,7 +58,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public static string ParseInputResponse(this byte[] response)
         {
             // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.DebugLevel, "ParseInputResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogVerbose("ParseInputResponse response: {response}", ComTextHelper.GetEscapedText(response));
 
             //add together the input type byte & the input number byte
             var inputNumber = response[3] << 8 | response[4];
@@ -67,7 +67,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             if(_inputMap.TryGetValue(inputNumber,out input))
             {
-                Debug.Console(DebugLevels.DebugLevel, "Got input {0}", input);
+                Debug.LogVerbose("Got input {input}", input);
                 return input;
             }
 
@@ -76,7 +76,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         public static int ParseVolumeResponse(this byte[] response)
         {
-            Debug.Console(DebugLevels.DebugLevel, "ParseVolumeResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogVerbose("ParseVolumeResponse response: {response}", ComTextHelper.GetEscapedText(response));
             //not a direct volume response
             if (response[3] != 0x01)
             {
@@ -93,7 +93,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         /// <returns></returns>
         public static bool ParseMuteResponse(this byte[] response)
         {
-            Debug.Console(DebugLevels.DebugLevel, "ParseMuteResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogVerbose("ParseMuteResponse response: {response}", ComTextHelper.GetEscapedText(response));
             //not a direct mute response
             if (response[3] != 0x01) { return false; }
 
@@ -102,7 +102,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public static string ParsePictureModeResponse(this byte[] response)
         {
             // TODO [ ] actually add in parsing
-            Debug.Console(DebugLevels.DebugLevel, "ParsePictureModeResponse response: {0}", ComTextHelper.GetEscapedText(response));
+            Debug.LogVerbose("ParsePictureModeResponse response: {response}", ComTextHelper.GetEscapedText(response));
 
             //add together the input type byte & the input number byte
             var pictureModeNumber = response[3] << 8 | response[4];
@@ -111,7 +111,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             if (_pictureModeMap.TryGetValue(pictureModeNumber, out pictureMode))
             {
-                Debug.Console(DebugLevels.DebugLevel, "Got picture mode {0}", pictureMode);
+                Debug.LogVerbose("Got picture mode {pictureMode}", pictureMode);
                 return pictureMode;
             }
 
