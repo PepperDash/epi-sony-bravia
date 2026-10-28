@@ -236,8 +236,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
 
             _pollTimer = _comsIsRs232
-                ? new System.Threading.Timer((o) => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum() }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite)
-                : new System.Threading.Timer((o) => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                ? new System.Threading.Timer(this.GuardTimerCallback("poll", () => PollRs232(new List<byte[]> { Rs232Commands.PowerQuery.WithChecksum(), Rs232Commands.InputQuery.WithChecksum(), Rs232Commands.VolumeQuery.WithChecksum(), Rs232Commands.MuteQuery.WithChecksum() })), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite)
+                : new System.Threading.Timer(this.GuardTimerCallback("poll", () => Poll(new List<IQueueMessage> { powerQuery, inputQuery, muteQuery, volumeQuery })), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
             // Simple IP VOLU uses the TV's 0-100 volume scale; RS232 keeps its 0-255 default. An explicit
             // maxVolumeLevel applies to both, for feedback and for outgoing levels alike.
@@ -259,6 +259,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     // The Simple IP reader exits once it has read what's already queued
                     _queueSimpleIp?.CompleteAdding();
 
+                    // Stop the monitor first: its polls reschedule _pollTimer, which throws once disposed
+                    CommunicationMonitor?.Stop();
                     _pollTimer.Dispose();
                 }
                 catch (Exception ex)
@@ -328,30 +330,48 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     return;
                 }
 
+                // System.Timers.Timer rejects an interval of 0 or less, where CTimer fired at once:
+                // a warming or cooling time of 0 completes immediately
                 if (value)
                 {
                     IsWarming = true;
 
-                    WarmupTimer = new System.Timers.Timer(_warmingtimeMs) { AutoReset = false };
-                    WarmupTimer.Elapsed += (s, e) =>
+                    void WarmupComplete()
                     {
                         _powerIsOn = value;
                         IsWarming = false;
                         PowerIsOnFeedback.FireUpdate();
-                    };
+                    }
+
+                    if (_warmingtimeMs <= 0)
+                    {
+                        WarmupComplete();
+                        return;
+                    }
+
+                    WarmupTimer = new System.Timers.Timer(_warmingtimeMs) { AutoReset = false };
+                    WarmupTimer.Elapsed += (s, e) => WarmupComplete();
                     WarmupTimer.Start();
                 }
                 else
                 {
                     IsCooling = true;
 
-                    CooldownTimer = new System.Timers.Timer(_coolingTimeMs) { AutoReset = false };
-                    CooldownTimer.Elapsed += (s, e) =>
+                    void CooldownComplete()
                     {
                         _powerIsOn = value;
                         IsCooling = false;
                         PowerIsOnFeedback.FireUpdate();
-                    };
+                    }
+
+                    if (_coolingTimeMs <= 0)
+                    {
+                        CooldownComplete();
+                        return;
+                    }
+
+                    CooldownTimer = new System.Timers.Timer(_coolingTimeMs) { AutoReset = false };
+                    CooldownTimer.Elapsed += (s, e) => CooldownComplete();
                     CooldownTimer.Start();
                 }
             }
@@ -1475,11 +1495,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (!pressRelease)
             {
-                if (_volumeTimer != null)
-                {
-                    _volumeTimer.Dispose();
-                    _volumeTimer = null;
-                }
+                // One atomic take, so a ramp tick clearing the timer at the same moment can't race this
+                System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                 _pollTimer.Change(1000, pollTime);
                 return;
@@ -1491,7 +1508,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 _volumeCounter = 0;
 
-                _volumeTimer = new System.Threading.Timer(o =>
+                _volumeTimer = new System.Threading.Timer(this.GuardTimerCallback("volume up", () =>
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
@@ -1500,11 +1517,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         _rawVolume = maxVolumeLevel;
                         VolumeLevelFeedback.FireUpdate();
 
-                        if (_volumeTimer != null)
-                        {
-                            _volumeTimer.Dispose();
-                            _volumeTimer = null;
-                        }
+                        System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                         return;
                     }
@@ -1532,7 +1545,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                     VolumeLevelFeedback.FireUpdate();
 
                     _volumeCounter += 1;
-                }, null, 0, 500);
+                }), null, 0, 500);
 
                 return;
             }
@@ -1542,11 +1555,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if (!pressRelease)
             {
-                if (_volumeTimer != null)
-                {
-                    _volumeTimer.Dispose();
-                    _volumeTimer = null;
-                }
+                // One atomic take, so a ramp tick clearing the timer at the same moment can't race this
+                System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                 _pollTimer.Change(1000, pollTime);
                 return;
@@ -1558,7 +1568,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                 _volumeCounter = 0;
 
-                _volumeTimer = new System.Threading.Timer(o =>
+                _volumeTimer = new System.Threading.Timer(this.GuardTimerCallback("volume down", () =>
                 {
                     this.LogVerbose("rawVolume: {raw:X2} maxVolume: {max:X2}", _rawVolume, maxVolumeLevel);
 
@@ -1567,11 +1577,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                         _rawVolume = 0;
                         VolumeLevelFeedback.FireUpdate();
 
-                        if (_volumeTimer != null)
-                        {
-                            _volumeTimer.Dispose();
-                            _volumeTimer = null;
-                        }
+                        System.Threading.Interlocked.Exchange(ref _volumeTimer, null)?.Dispose();
 
                         return;
                     }
@@ -1601,7 +1607,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
                     _volumeCounter += 1;
 
-                }, null, 0, 500);
+                }), null, 0, 500);
 
                 return;
             }

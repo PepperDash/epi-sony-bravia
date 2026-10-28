@@ -320,7 +320,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
             var generation = ++_warmupGeneration;
             _warmupTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-            _warmupTimer = new System.Threading.Timer(o => OnWarmupComplete(generation), null, WarmupTime, System.Threading.Timeout.Infinite);
+            _warmupTimer = new System.Threading.Timer(this.GuardTimerCallback("warm-up", () => OnWarmupComplete(generation)), null, WarmupTime, System.Threading.Timeout.Infinite);
         }
 
         /// <summary>
@@ -364,7 +364,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 IsCoolingDown = true;
                 var generation = ++_cooldownGeneration;
                 _cooldownTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-                _cooldownTimer = new System.Threading.Timer(o => OnCooldownComplete(generation), null, CooldownTime, System.Threading.Timeout.Infinite);
+                _cooldownTimer = new System.Threading.Timer(this.GuardTimerCallback("cool-down", () => OnCooldownComplete(generation)), null, CooldownTime, System.Threading.Timeout.Infinite);
             }
         }
 
