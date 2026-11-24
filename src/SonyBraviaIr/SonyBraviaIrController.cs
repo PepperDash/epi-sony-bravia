@@ -23,6 +23,14 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private readonly SonyBraviaIrConfig _config;
         private readonly IrOutputPortController _irPort;
 
+        private const ushort DefaultIrPulseTimeMs = 200;
+
+        /// <summary>
+        /// True when the remote's own Power key should go out over IR (remotePowerToggle). The room
+        /// plugin reads this by reflection to choose between this IR toggle and the paired display's.
+        /// </summary>
+        public bool RemotePowerToggle => _config.RemotePowerToggle;
+
         // irCommandMap with each key resolved to its standard command, so "hdmi1" and "HDMI_1" are
         // the same entry and one lookup in SendIrCommand covers both.
         private readonly Dictionary<string, string> _commandMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -168,9 +176,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             }
 
             var available = new HashSet<string>(_irPort.IrFileCommands ?? new string[0], StringComparer.OrdinalIgnoreCase);
-            var used = _config.RemoteOnly
-                ? SonyBraviaIrCommands.RemoteCommands
-                : SonyBraviaIrCommands.RemoteCommands.Concat(SonyBraviaIrCommands.PowerCommands);
+            var used = !_config.RemoteOnly
+                ? SonyBraviaIrCommands.RemoteCommands.Concat(SonyBraviaIrCommands.PowerCommands)
+                : _config.RemotePowerToggle
+                    ? SonyBraviaIrCommands.RemoteCommands.Concat(new[] { SonyBraviaIrCommands.PowerToggle })
+                    : SonyBraviaIrCommands.RemoteCommands;
 
             // Mapped commands are skipped: a map target can be a button label rather than a
             // standard command, and labels aren't in this list.
@@ -267,10 +277,11 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             if (!string.Equals(resolved, cmd, StringComparison.Ordinal))
                 this.LogVerbose("SendIrCommand: resolved '{selector}' to '{command}'", cmd, resolved);
 
-            this.LogDebug("SendIrCommand: '{command}'", resolved);
+            var pulseMs = _config.IrPulseTimeMs > 0 ? _config.IrPulseTimeMs : DefaultIrPulseTimeMs;
 
-            _irPort.PressRelease(resolved, true);
-            _irPort.PressRelease(resolved, false);
+            this.LogDebug("SendIrCommand: '{command}' ({pulseMs} ms)", resolved, pulseMs);
+
+            _irPort.Pulse(resolved, pulseMs);
         }
 
         // Remote keys fire once, on release, because SendIrCommand already pulses press and release.
@@ -290,6 +301,8 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         private bool SuppressPower(string caller)
         {
             if (!_config.RemoteOnly) return false;
+
+            if (_config.RemotePowerToggle && caller == nameof(PowerToggle)) return false;
 
             this.LogDebug("{caller} suppressed: remoteOnly is set, so the paired display driver owns power", caller);
             return true;

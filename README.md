@@ -123,6 +123,8 @@ feedback, and this device sends remote keys only:
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
 | `remoteOnly` | bool | `false` | `true`: never send power, including the power-on an input or app select would otherwise send first. Set it whenever another driver owns the display's power. Leave it `false` only when IR is the display's sole driver. |
+| `remotePowerToggle` | bool | `false` | With `remoteOnly`, still send the remote's own Power (toggle) key over IR. Power on/off and the power-on before an input or app select stay suppressed. The paired driver's power feedback catches up on its next poll. |
+| `irPulseTimeMs` | ushort | `200` | How long each key is held on the IR port. Sony TVs ignore a single IR frame, so an instant press and release does nothing; `0` or unset uses 200 ms. |
 | `warmingTimeMs` | uint | `8000` | Warm-up wait before an input select is re-sent after power-on. Not used when `remoteOnly` is `true`. |
 | `coolingTimeMs` | uint | `8000` | Cool-down time after power-off. |
 | `friendlyNames` | array | `[]` | `{ "inputKey", "name", "hideInput" }` entries that rename or hide inputs. |
