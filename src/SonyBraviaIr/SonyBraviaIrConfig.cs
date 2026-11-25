@@ -11,6 +11,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         [JsonProperty("coolingTimeMs")]
         public uint CoolingTimeMs { get; set; }
 
+        // How long each key is held on the IR port, in ms. Sony (SIRC) TVs only act on a code they
+        // receive several times in a row, so an instant press-then-release, which can emit a single
+        // frame, may be ignored. 0 or unset uses the default (200 ms, Essentials' standard IR pulse).
+        [JsonProperty("irPulseTimeMs")]
+        public ushort IrPulseTimeMs { get; set; }
+
         [JsonProperty("friendlyNames")]
         public List<SonyBraviaIrFriendlyName> FriendlyNames { get; set; } = new List<SonyBraviaIrFriendlyName>();
 
@@ -27,6 +33,13 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         // ToObject and taking the device down with it.
         [JsonProperty("remoteOnly", NullValueHandling = NullValueHandling.Ignore)]
         public bool RemoteOnly { get; set; }
+
+        // With remoteOnly, still send the remote's own POWER (toggle) key over IR when a user presses
+        // it. Only PowerToggle passes: PowerOn, PowerOff and the implicit power-on before an input or
+        // app select stay suppressed, so room on/off and the input buttons keep using the paired
+        // RS232/IP driver. A blind toggle can leave that driver's feedback behind until it next polls.
+        [JsonProperty("remotePowerToggle", NullValueHandling = NullValueHandling.Ignore)]
+        public bool RemotePowerToggle { get; set; }
 
         // IR files don't all name things the same way: one maps its OK key to standard ENTER rather
         // than SELECT, another labels its HDMI inputs INPUT_7_(HDMI). Each entry maps a standard

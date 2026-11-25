@@ -82,23 +82,18 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
 
         public static IQueueMessage GetVolumeDirect(IBasicCommunication coms, Action<eCommandType> action, int volume)
         {
-            if(volume < 0 )
-            {
-                VolumeDirect[5] = 0x00;
+            return new Rs232Command(coms, GetVolumeDirectBytes(volume), action, eCommandType.Command);
+        }
 
-                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
-            }
-
-            if (volume > 255)
-            {
-                VolumeDirect[5] = 0xFF;
-
-                return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
-            }
-
-            VolumeDirect[5] = (byte) volume;
-
-            return new Rs232Command(coms, VolumeDirect.WithChecksum(), action, eCommandType.Command);
+        /// <summary>
+        /// Builds a volume direct command for the level, clamped to 0-255, with its checksum.
+        /// Copies VolumeDirect rather than writing into it, because every display shares that array.
+        /// </summary>
+        public static byte[] GetVolumeDirectBytes(int volume)
+        {
+            var command = (byte[])VolumeDirect.Clone();
+            command[5] = (byte)Math.Max(0, Math.Min(0xFF, volume));
+            return command.WithChecksum();
         }
 
         public static IQueueMessage GetMuteQuery(IBasicCommunication coms, Action<eCommandType> action)

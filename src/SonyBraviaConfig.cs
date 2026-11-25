@@ -17,8 +17,12 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         public long? CoolingTimeMs { get; set; }
         public bool ForceRs232 { get; set; }
 
+        /// <summary>
+        /// Highest raw volume level. When omitted, RS232 uses 255 and Simple IP uses 100, the TV's own
+        /// volume scale (Sony's REST getVolumeInformation reports maxVolume 100)
+        /// </summary>
         [JsonProperty("maxVolumeLevel")]
-        public byte MaxVolumeLevel { get; set; } = 0xFF;
+        public byte? MaxVolumeLevel { get; set; }
 
         [JsonProperty("activeInputs")]
         public List<SonyBraviaInputConfig> ActiveInputs { get; set; } = new List<SonyBraviaInputConfig>();

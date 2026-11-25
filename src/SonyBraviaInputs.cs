@@ -107,7 +107,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
                 return;
             }
 
-            _parent.EnqueueCommand(_inputCommand);
+            _parent.EnqueueSimpleIpControl("INPT", _inputCommand);
         }
     }
 }
