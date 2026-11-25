@@ -11,26 +11,26 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             TypeNames = new List<string> { "sonybravia", "sonybraviarest", "sonybraviasimpleip" };
 
-            // Keep equal to the PepperDashEssentials PackageReference version in the csproj: the version
-            // this plugin is compiled against is its minimum
-            MinimumEssentialsFrameworkVersion = "2.20.0";
+            // Keep equal to the major.minor.patch of the PepperDashEssentials PackageReference version in the
+            // csproj, without any prerelease suffix: Essentials can't parse "-rc.N" and skips loading the plugin
+            MinimumEssentialsFrameworkVersion = "3.0.0";
         }
 
         public override EssentialsDevice BuildDevice(DeviceConfig dc)
         {
-            Debug.Console(DebugLevels.TraceLevel, "[{0}] Building {1} plugin instance...", dc.Key, dc.Type);
+            Debug.LogDebug("[{key}] Building {type} plugin instance", dc.Key, dc.Type);
 
             var props = dc.Properties.ToObject<SonyBraviaConfig>();
             if (props == null)
             {
-                Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin", dc.Key, dc.Type);
+                Debug.LogError("[{key}] Failed to build {type} plugin: no properties", dc.Key, dc.Type);
                 return null;
             }
 
             var comms = CommFactory.CreateCommForDevice(dc);
             if (comms != null) return new SonyBraviaDevice(dc, comms);
 
-            Debug.Console(DebugLevels.TraceLevel, "[{0}] Failed to build {1} plugin using {2}", dc.Key, dc.Type, props.Control.Method);
+            Debug.LogError("[{key}] Failed to build {type} plugin using {method}", dc.Key, dc.Type, props.Control.Method);
             return null;
         }
     }

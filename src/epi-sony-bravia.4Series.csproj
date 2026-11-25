@@ -3,7 +3,7 @@
 		<ProjectType>ProgramLibrary</ProjectType>
 	</PropertyGroup>
 	<PropertyGroup>
-		<TargetFramework>net472</TargetFramework>
+		<TargetFramework>net8</TargetFramework>
 		<RootNamespace>PepperDash.Essentials.Plugins.SonyBravia</RootNamespace>
 		<Deterministic>false</Deterministic>
 		<AssemblyTitle>PepperDash.Essentials.Plugins.Sony.Bravia</AssemblyTitle>
@@ -20,22 +20,8 @@
 		<PackageTags>crestron 4series sony bravia</PackageTags>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<DefineConstants>$(DefineConstants);SERIES4</DefineConstants>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<DefineConstants>$(DefineConstants);SERIES4</DefineConstants>
-	</PropertyGroup>
-
 	<ItemGroup>
-		<Compile Remove="Properties\**" />
-		<EmbeddedResource Remove="Properties\**" />
-		<None Remove="Properties\**" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<PackageReference Include="PepperDashEssentials" Version="2.20.0">
+		<PackageReference Include="PepperDashEssentials" Version="3.0.0-rc.19">
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</PackageReference>
 	</ItemGroup>

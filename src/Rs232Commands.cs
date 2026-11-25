@@ -361,29 +361,17 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             if(coms == null)
             {
-#if SERIES4
                 throw new ArgumentNullException(nameof(coms));
-#else
-                throw new ArgumentNullException("coms");
-#endif
             }
 
             if (message == null)
             {
-#if SERIES4
                 throw new ArgumentNullException(nameof(message));
-#else
-                throw new ArgumentNullException("message");
-#endif
             }
 
             if (updateCommandAction == null)
             {
-#if SERIES4
                 throw new ArgumentNullException(nameof(updateCommandAction));
-#else
-                throw new ArgumentNullException("updateCommandAction");
-#endif
             }
 
             _action = updateCommandAction;
@@ -396,7 +384,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             _action(_commandType);
 
-            Debug.Console(DebugLevels.DebugLevel, "Sending command {0}", _message.ToReadableString());
+            Debug.LogVerbose("Sending command {command}", _message.ToReadableString());
             _comm.SendBytes(_message);
         }
 

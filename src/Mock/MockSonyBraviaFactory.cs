@@ -20,9 +20,9 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
         {
             TypeNames = new List<string> { "mockSonyBravia", "sonybraviamock" };
 
-            // Keep equal to the PepperDashEssentials PackageReference version in the csproj: the version
-            // this plugin is compiled against is its minimum
-            MinimumEssentialsFrameworkVersion = "2.20.0";
+            // Keep equal to the major.minor.patch of the PepperDashEssentials PackageReference version in the
+            // csproj, without any prerelease suffix: Essentials can't parse "-rc.N" and skips loading the plugin
+            MinimumEssentialsFrameworkVersion = "3.0.0";
         }
 
         /// <inheritdoc />
@@ -43,7 +43,7 @@ namespace PepperDash.Essentials.Plugins.SonyBravia
             var comms = new MockSonyBraviaCommunication(dc.Key + "-mockComm", responder, options.ResponseDelayMs);
 
             MockSonyBraviaConsole.Register(dc.Key, responder);
-            Debug.LogInformation("Building mock Sony BRAVIA display '{0}' (no hardware). Console: mocksony {0} status", dc.Key);
+            Debug.LogInformation("Building mock Sony BRAVIA display '{key}' (no hardware). Console: mocksony {key} status", dc.Key);
 
             return new SonyBraviaDevice(dc, comms);
         }
